@@ -101,7 +101,17 @@ Terminal chat, using the same agent: `python scripts/terminal_agent.py` (logs in
 cd apps/api
 python -m pytest -q                    # no DB, Ollama or keys needed
 python scripts/evaluate_matching.py    # offline matching evaluation on the §22 dataset
+python scripts/e2e_check.py            # full workflow on the REAL Supabase DB (44/44 passed on 17 Nov 2026)
+python scripts/reset_demo.py --yes     # wipe demo reports/matches/chats (keeps accounts) before a demo
 ```
+
+Verified results (17 Nov 2026):
+- pytest: 128 passed, 1 skipped (plus the real-DB test: 1 passed)
+- matching recall@3: 10/10
+- end-to-end on Supabase: 44/44
+- real `qwen2.5:3b` tool call: correct tool chosen, 58 s on an i3
+
+See [docs/evaluation.md](docs/evaluation.md).
 
 ## 7. Deploy (Render, free)
 
@@ -139,7 +149,6 @@ python scripts/evaluate_matching.py    # offline matching evaluation on the §22
 - Rate limiting (slowapi).
 - Tools `notify_user`, `escalate_to_admin`, `update_item_status` (cancelling your own report).
 - §17 prompt-injection test suite. Admin actions aren't tools and tool outputs exclude PII, but this isn't formally tested.
-- Deployment (Render/Vercel).
 - Seeding the 40 test reports into the DB, which is blocked because every report needs a real Auth user. The offline evaluation covers that dataset.
 - An Anthropic engine inside the agent. `scripts/hello_agent.py` still works if you get credits.
 - Measured accuracy of the **local LLM** engine. It depends on the demo laptop; small models make more tool-calling mistakes, which the server-side guards contain.

@@ -81,7 +81,8 @@ TypeScript
 ## Phase checklist
 - [ ] Phase 0: Environment & accounts
 - [ ] Phase 1: Scaffold + hello agent
-- [ ] Emergency Phase 2 (no paid API): Ollama + rule engine, DB, matching, admin flow, web page  ← IN PROGRESS
+- [x] Emergency Phase 2 (no paid API): Ollama + rule engine, DB, matching, admin flow, web page
+      (verified 17 Nov 2026: pytest 128/1 skipped, e2e on Supabase 44/44; Render deploy = render.yaml)
       (covers parts of Phases 2–7; deferred items are listed in README "Deferred")
 - [ ] Phase 2: Terminal Lost & Found agent
 - [ ] Phase 3: Database + FastAPI backend

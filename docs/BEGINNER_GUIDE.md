@@ -245,6 +245,26 @@ python scripts\evaluate_matching.py
 - pytest: `128 passed, 1 skipped`
 - evaluation: `recall@3 on true pairs : 10/10`
 
+**Full real-database check.** It creates real rows, so run the reset afterwards:
+```powershell
+python scripts\e2e_check.py          # expects: RESULT: 44/44 checks passed
+python scripts\reset_demo.py --yes   # wipes reports/matches/chats, keeps accounts; codes restart at L-0001
+```
+Run the reset **before every demo**, so your codes start at L-0001.
+
+### Deploy to Render (free; gives you a public link)
+The hosted app uses **rule mode**, because Render's free plan can't run Ollama. The badge says "Rule-based mode", which is honest.
+1. https://render.com → **Get Started** → **Sign in with GitHub**. You don't need to enter a card for the free plan; if Render asks for payment, stop and check that the plan says **Free**.
+2. **New +** → **Blueprint** → choose `campusfind-ai-agent` → Render reads `render.yaml`.
+3. It asks for 4 values. Copy them **from your own `apps/api/.env`** (never paste them into chat):
+   - `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`: same as in `.env`.
+   - `ALLOWED_ORIGINS`: `https://campusfind-ai-agent.onrender.com`. If Render gives your service a different name, edit it later under **Environment**.
+4. **Apply.** The build takes about 3–5 minutes. Wait for **Live** (green).
+5. Open `https://<your-service>.onrender.com/api/health` → `"database":"ok"` and `"chat_engine":"rules"`.
+6. Supabase → **Authentication → URL Configuration** → **Site URL** = your Render URL → Save.
+7. Open the Render URL and log in as student1. It's the same database, so you'll see the same reports.
+- The free plan sleeps after 15 minutes idle; the first visit then takes about 1 minute. Open it 2 minutes before the demo.
+
 ---
 
 ## PART D: 5-minute demonstration script
@@ -270,7 +290,7 @@ python scripts\evaluate_matching.py
 
 ---
 
-## PART E: Viva preparation (25 questions)
+## PART E: Viva preparation (28 questions)
 
 1. **What is an AI agent?** A program where an AI model decides which actions (tools) to take, our code performs them, the model sees the results, and it repeats until the task is done. Agent = LLM + tools + loop + memory.
 2. **How is it different from a chatbot?** A chatbot only replies with text. Our agent *does* things: it saves reports, searches and runs matching, choosing the steps itself.
@@ -308,6 +328,9 @@ python scripts\evaluate_matching.py
     - Escalation and cancel tools.
     - A bigger model on a GPU server.
     - Tuning the weights on real campus data.
+26. **How do you know it works with the real database, not just mocks?** `scripts/e2e_check.py` runs the full story on live Supabase with real accounts: lost → found → candidate (0.979) → owner confirms → admin verifies → returned. All 44 checks pass, including the negative ones: no token gives 401, a student on admin routes gets 403, the finder can't confirm, a vague report saves nothing, and a duplicate isn't saved.
+27. **Why does the hosted version use rules and not the LLM?** Free hosting has no GPU and too little RAM for a language model. The app detects this and labels the engine honestly. On the laptop, the same code uses Qwen through Ollama.
+28. **How fast is the local LLM?** Measured at 58 s for one reply (including model load) on an i3 with 8 GB RAM. It chose the right tool (`get_my_reports`) by itself. A GPU would make it a few seconds.
 
 ---
 
@@ -331,7 +354,7 @@ Campus AI Agent/
 │   │   ├── routers/    agent.py items.py matches.py admin.py notifications.py me.py
 │   │   ├── schemas/    items.py api.py
 │   │   └── static/     index.html  (the whole web app)
-│   ├── scripts/        hello_agent.py terminal_agent.py seed.py evaluate_matching.py
+│   ├── scripts/        hello_agent.py terminal_agent.py seed.py evaluate_matching.py e2e_check.py reset_demo.py
 │   ├── tests/          9 test files
 │   └── requirements.txt  pytest.ini
 ├── db/schema.sql  db/seed/*.csv

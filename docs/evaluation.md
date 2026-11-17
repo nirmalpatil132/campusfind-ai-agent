@@ -72,6 +72,29 @@ L14–F14 (the umbrellas) still scores 0.692 but is now `hidden`. L13–F13 (0.9
 | Matching | `test_matching.py` | Hand-calculated values: the §14 worked example (0.86), renormalisation (0.936), brand cap, time decay, colour-aware mark bonus |
 | API | `test_api.py` | 401 without/with a bad token. 403 for students on admin routes. 503 with setup steps when there's no DB. 422 for a 2,001-character message |
 
-Not measured yet:
-- §20 extraction accuracy and tool-selection scores with a **real** local LLM (they need Ollama on the demo laptop).
-- Latency.
+## End-to-end test on the real Supabase database (17 Nov 2026)
+
+`python scripts/e2e_check.py` in `apps/api` drives the real agent (rule engine, so the results repeat) and the real services against the live Supabase project, using the three real Auth accounts. Result: **44/44 checks passed.**
+
+| Step | What was checked | Result |
+|---|---|---|
+| Database | Connection, all 11 tables, pgvector, 14 locations | ✅ |
+| Auth | JWKS signing key reachable (ES256), and the student1/student2/admin profiles have the right roles | ✅ |
+| Authorization (HTTP) | Student → 403 on `/api/admin/matches`, admin → 200 on `/api/admin/stats`, no token → 401 | ✅ |
+| Lost report | Summary shown before saving; "yes" → `L-0001` saved with the right owner; matching ran | ✅ |
+| Missing details | "I lost something" → asks a question, saves nothing | ✅ |
+| Duplicate | The same bag reported again → not saved, the reply points to `L-0001` | ✅ |
+| Found report | Asks where the item is now and for a private detail → `F-0001` | ✅ |
+| Candidate | L-0001 ranked at **0.979** (`strong_candidate`); the reply says "potentially matching" | ✅ |
+| Privacy | Private hint stored, but absent from the agent reply, the candidates and the owner's view | ✅ |
+| Wrong user | The finder can't confirm the owner's match (Forbidden) | ✅ |
+| Admin | Queue shows the owner's answer next to the private hint → verify → mark returned | ✅ |
+| Final state | Both items `returned`, match `closed`, `admin_actions` has verify + return, both students notified, `agent_logs` rows carry `mode = rules` | ✅ |
+
+The real-DB pytest (`RUN_DB_TESTS=1 python -m pytest tests/test_db_integration.py`) also passed (1 passed).
+
+## Real local-LLM test (17 Nov 2026)
+
+`qwen2.5:3b` on Ollama, on the demo laptop (i3-1115G4, 8 GB RAM, no GPU). The question "What reports have I made?" made the model choose the `get_my_reports` tool by itself and summarise the result correctly. It took **58 s**, including loading the model. Conclusion: LLM mode works but is slow on this CPU, so the timed demo uses rule mode and shows LLM mode once.
+
+Not measured yet: §20 extraction accuracy and tool-selection scores over many prompts with the real LLM.
