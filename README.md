@@ -14,6 +14,8 @@ More detail:
 - API: [docs/api-contract.md](docs/api-contract.md)
 - Test results: [docs/evaluation.md](docs/evaluation.md)
 
+> **Source:** https://github.com/nirmalpatil132/campusfind-ai-agent
+>
 > **New to this project? Read [docs/BEGINNER_GUIDE.md](docs/BEGINNER_GUIDE.md).** It covers setup, a demo script and viva questions.
 
 ### Quick start (after the one-time Supabase setup in section 2)

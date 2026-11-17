@@ -314,7 +314,7 @@ python scripts\evaluate_matching.py
 ## PART F: Final submission
 
 **GitHub repository:**
-> Not published yet. This line is updated after the push is verified (see README).
+> https://github.com/nirmalpatil132/campusfind-ai-agent (public; push verified 17 Nov 2026)
 
 **Live deployment:**
 > Not deployed yet. `render.yaml` is prepared; see the README "Deploy" section.
