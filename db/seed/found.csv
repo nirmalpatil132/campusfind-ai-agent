@@ -1,0 +1,21 @@
+code,category,item_name,brand,color,description,location,date,time,current_holding,created_by
+F01,bag,laptop bag,HP,black,"Black laptop bag with a red keychain, left outside the lab",CSE Block,2026-09-29,15:10,admin_office,stu21
+F02,bottle,water bottle,Milton,navy,"Navy blue Milton bottle with some stickers",Central Library,2026-09-28,16:00,finder,stu22
+F03,electronics,scientific calculator,Casio,grey,"Casio calculator left on a bench, something scratched on the back",Mech Block,2026-09-27,12:30,admin_office,stu23
+F04,wallet,wallet,,brown,"Brown wallet with a bus pass",Main Canteen,2026-09-26,14:00,admin_office,stu24
+F05,electronics,earbuds case,boAt,black,"Black boAt earbuds in case, lid has a crack",Auditorium,2026-09-25,19:30,finder,stu25
+F06,keys,keys,,silver,"Keys on a blue keyring shaped like a ball",Sports Ground,2026-09-29,07:00,security,stu26
+F07,id_card,ID card,,white,"College ID card on blue lanyard, E&TC department",E&TC Block,2026-09-29,11:00,admin_office,stu27
+F08,clothing,hoodie,Puma,dark blue,"Dark blue Puma hoodie, ink mark on one sleeve",Boys Hostel A,2026-09-25,09:00,finder,stu28
+F09,jewellery,wrist watch,Titan,golden,"Golden watch with leather strap",Girls Hostel B,2026-09-27,09:00,admin_office,stu29
+F10,book,maths textbook,,,"M3 textbook with highlighting, a name written inside",Central Library,2026-09-30,17:30,admin_office,stu30
+F11,bag,laptop bag,HP,black,"Black HP laptop bag, empty",CSE Block,2026-09-29,17:00,admin_office,stu31
+F12,bottle,steel bottle,Cello,blue,"Blue Cello steel bottle",Boys Hostel A,2026-09-30,21:00,finder,stu32
+F13,id_card,ID card,,white,"College ID card of a 4th year Mech student, red lanyard",Main Canteen,2026-09-28,14:00,admin_office,stu33
+F14,other,umbrella,,black,"Black umbrella with plastic handle",Girls Hostel B,2026-09-30,18:00,security,stu34
+F15,electronics,earbuds case,OnePlus,white,"White OnePlus earbuds case",Workshop,2026-09-26,15:00,finder,stu35
+F16,stationery,geometry box,Camlin,blue,"Blue geometry box with compass",Civil Block,2026-09-28,10:00,admin_office,stu36
+F17,other,spectacles,,black,"Black-frame spectacles in a grey case",Central Library,2026-09-29,13:00,admin_office,stu37
+F18,electronics,charger,Samsung,white,"Samsung phone charger with cable",E&TC Block,2026-09-30,10:30,admin_office,stu38
+F19,other,lunch box,,green,"Green steel lunch box, 3 tiers",Main Canteen,2026-09-27,14:30,admin_office,stu39
+F20,jewellery,bracelet,,silver,"Thin silver bracelet",Auditorium,2026-09-25,21:00,admin_office,stu40

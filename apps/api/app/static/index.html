@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusFind AI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --navy: #13233f; --muted: #5b6b85; --line: #e3e8f0; --bg: #ffffff; --soft: #f5f7fb;
+    --accent: #0e7c66; --accent-soft: #e6f4f1; --warn: #9a6100; --warn-soft: #fff6e5;
+    --bad: #b42318; --bad-soft: #fdecea; --ok: #067647; --ok-soft: #ecfdf3;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--navy); background: var(--bg); }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--line);
+           position: sticky; top: 0; background: #fff; z-index: 5; }
+  header h1 { font-size: 18px; margin: 0; } header h1 span { color: var(--accent); }
+  .spacer { flex: 1; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+           background: var(--soft); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+  .badge.llm { background: var(--accent-soft); color: var(--accent); border-color: #bfe3da; }
+  .badge.rules { background: var(--warn-soft); color: var(--warn); border-color: #f3dcae; }
+  .badge.bad { background: var(--bad-soft); color: var(--bad); border-color: #f5c2bd; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  nav.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+  nav.tabs button { background: none; border: none; padding: 10px 12px; font: inherit; color: var(--muted); cursor: pointer;
+                    border-bottom: 2px solid transparent; white-space: nowrap; }
+  nav.tabs button.active { color: var(--navy); border-bottom-color: var(--accent); font-weight: 600; }
+  .btn { font: inherit; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent);
+         color: #fff; cursor: pointer; }
+  .btn.secondary { background: #fff; color: var(--accent); }
+  .btn.danger { background: #fff; color: var(--bad); border-color: var(--bad); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  input, textarea, select { font: inherit; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; width: 100%;
+                            color: var(--navy); background: #fff; }
+  label { display: block; font-weight: 600; margin: 10px 0 4px; font-size: 14px; }
+  label .opt { font-weight: 400; color: var(--muted); }
+  .card { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 10px 0; background: #fff; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 700px) { .grid2, .grid3 { grid-template-columns: 1fr; } .grid4 { grid-template-columns: 1fr 1fr; } }
+  .error { color: var(--bad); background: var(--bad-soft); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
+  .success { color: var(--ok); background: var(--ok-soft); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
+  .info { color: var(--warn); background: var(--warn-soft); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
+  /* landing */
+  .hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; align-items: start; margin-top: 12px; }
+  @media (max-width: 800px) { .hero { grid-template-columns: 1fr; } }
+  .hero h2 { font-size: 30px; line-height: 1.2; margin: 8px 0 12px; }
+  .steps { counter-reset: s; list-style: none; padding: 0; }
+  .steps li { counter-increment: s; padding: 6px 0 6px 36px; position: relative; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 6px; width: 24px; height: 24px; border-radius: 50%;
+                      background: var(--accent-soft); color: var(--accent); font-weight: 700; text-align: center; line-height: 24px; font-size: 13px; }
+  .authtabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .authtabs button { flex: 1; padding: 8px; border: 1px solid var(--line); background: var(--soft); border-radius: 8px; font: inherit; cursor: pointer; }
+  .authtabs button.active { background: #fff; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  /* chat */
+  #chatlog { border: 1px solid var(--line); border-radius: 12px; padding: 12px; height: 55vh; overflow-y: auto; background: var(--soft); }
+  .msg { max-width: 85%; margin: 8px 0; padding: 10px 12px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user { margin-left: auto; background: var(--navy); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.assistant { background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .chips { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft); border: 1px solid var(--line); }
+  .chip.err { color: var(--bad); border-color: #f5c2bd; }
+  .suggest { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .suggest button { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--navy); }
+  #composer { display: flex; gap: 8px; margin-top: 10px; } #composer input { flex: 1; }
+  /* status */
+  .status { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+  .st-open, .st-candidate { background: var(--soft); }
+  .st-matched, .st-owner_confirmed { background: var(--warn-soft); color: var(--warn); }
+  .st-verified { background: var(--accent-soft); color: var(--accent); }
+  .st-returned, .st-closed { background: var(--ok-soft); color: var(--ok); }
+  .st-rejected, .st-cancelled { background: var(--bad-soft); color: var(--bad); }
+  .timeline { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; }
+  .timeline span { padding: 2px 8px; border-radius: 6px; background: var(--soft); color: var(--muted); }
+  .timeline span.done { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .private { background: var(--warn-soft); border: 1px dashed #e0b45c; border-radius: 8px; padding: 8px; }
+  .stat { border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .stat b { display: block; font-size: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .tablewrap { overflow-x: auto; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent);
+             border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Campus<span>Find</span> AI</h1>
+  <span id="engine" class="badge" title="">checking…</span>
+  <span class="spacer"></span>
+  <span id="who" class="muted"></span>
+  <button id="logout" class="btn secondary" hidden>Log out</button>
+</header>
+
+<main>
+  <div id="setup-error" class="error" hidden></div>
+
+  <!-- ===================== LANDING + LOGIN / REGISTER ===================== -->
+  <section id="landing" hidden>
+    <div class="hero">
+      <div>
+        <span class="badge">Government College of Engineering, Kolhapur</span>
+        <h2>Lost something on campus? Found something?</h2>
+        <p>CampusFind AI is an AI agent that takes your lost or found report in plain language, asks for missing
+          details, saves it, and searches for <b>potentially matching</b> reports. A human admin verifies every claim
+          before an item is handed over.</p>
+        <ol class="steps">
+          <li>Tell the agent what you lost or found, e.g. <i>"I lost my black HP laptop bag in CSE block yesterday"</i>.</li>
+          <li>The agent asks one question at a time, shows a summary and saves only after you say <b>yes</b>.</li>
+          <li>The matching engine scores reports by category, colour, place, time and brand.</li>
+          <li>The owner answers a private verification question. The admin verifies and marks the item returned.</li>
+        </ol>
+        <p class="muted">Runs on a free local AI model (Ollama) when available, otherwise on a rule-based engine,
+          which is clearly labelled. No paid AI API is used.</p>
+      </div>
+      <div class="card">
+        <div class="authtabs">
+          <button id="tab-login" class="active" type="button">Log in</button>
+          <button id="tab-register" type="button">Register</button>
+        </div>
+        <form id="auth-form">
+          <div id="name-row" hidden>
+            <label for="reg-name">Full name</label>
+            <input id="reg-name" maxlength="80" autocomplete="name">
+          </div>
+          <label for="email">College email</label>
+          <input id="email" type="email" autocomplete="username" required>
+          <label for="password">Password <span class="opt">(min 6 characters)</span></label>
+          <input id="password" type="password" minlength="6" autocomplete="current-password" required>
+          <div id="auth-msg" hidden></div>
+          <p><button class="btn" id="auth-submit" type="submit" style="width:100%">Log in</button></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== APP ===================== -->
+  <section id="app" hidden>
+    <nav class="tabs" id="tabs">
+      <button data-tab="chat" class="active">🤖 AI Agent</button>
+      <button data-tab="lost">Report lost</button>
+      <button data-tab="found">Report found</button>
+      <button data-tab="search">Search</button>
+      <button data-tab="matches">Matches <span id="match-count"></span></button>
+      <button data-tab="reports">My reports <span id="notif-count"></span></button>
+      <button data-tab="admin" id="admin-tab" hidden>Admin</button>
+    </nav>
+
+    <!-- chat -->
+    <div id="tab-chat">
+      <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+        <span class="muted" id="session-label"></span>
+        <button class="btn secondary" id="new-chat">New chat</button>
+      </div>
+      <div id="chatlog"></div>
+      <div class="suggest" id="suggest">
+        <button>I lost my black HP laptop bag in CSE block yesterday</button>
+        <button>I found a blue water bottle in the library today</button>
+        <button>Has anyone found a calculator?</button>
+        <button>my reports</button>
+      </div>
+      <form id="composer">
+        <input id="message" maxlength="2000" placeholder="Type a message…" autocomplete="off">
+        <button class="btn" id="send" type="submit">Send</button>
+      </form>
+    </div>
+
+    <!-- report forms (shared template filled by JS) -->
+    <div id="tab-lost" hidden></div>
+    <div id="tab-found" hidden></div>
+
+    <!-- search -->
+    <div id="tab-search" hidden>
+      <form id="search-form" class="card">
+        <div class="grid4">
+          <div><label for="s-q">Keywords</label><input id="s-q" maxlength="200" placeholder="e.g. blue bottle"></div>
+          <div><label for="s-type">Type</label><select id="s-type"><option value="found">Found items</option><option value="lost">Lost items</option><option value="">Both</option></select></div>
+          <div><label for="s-cat">Category</label><select id="s-cat" data-cats><option value="">Any</option></select></div>
+          <div><label for="s-loc">Location</label><select id="s-loc" data-locs><option value="">Any</option></select></div>
+        </div>
+        <p><button class="btn" type="submit">Search</button></p>
+      </form>
+      <div id="search-results"></div>
+    </div>
+
+    <!-- matches -->
+    <div id="tab-matches" hidden>
+      <div class="info">A candidate is <b>not</b> a confirmed match. Answer the verification question; an admin then compares
+        your answer with the finder's private note before anything is handed over.</div>
+      <div id="matches-list"></div>
+    </div>
+
+    <!-- my reports -->
+    <div id="tab-reports" hidden>
+      <h3>Notifications</h3>
+      <div id="notif-list"></div>
+      <h3>My reports</h3>
+      <div class="tablewrap"><table id="reports-table"></table></div>
+    </div>
+
+    <!-- admin -->
+    <div id="tab-admin" hidden>
+      <div class="grid4" id="admin-stats"></div>
+      <h3>Verification queue</h3>
+      <div class="row">
+        <select id="admin-status" style="width:auto">
+          <option value="owner_confirmed">Waiting for verification</option>
+          <option value="verified">Verified: ready to hand over</option>
+          <option value="candidate">Candidates (owner not answered yet)</option>
+          <option value="closed">Closed (returned)</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <button class="btn secondary" id="admin-refresh">Refresh</button>
+      </div>
+      <div id="admin-list"></div>
+      <h3>All reports</h3>
+      <div class="tablewrap"><table id="admin-items"></table></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const todayIso = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+let sb = null, me = null, sessionId = null, meta = { locations: [], categories: [] }, authMode = "login";
+
+function showError(text) { const e = $("setup-error"); e.textContent = text || ""; e.hidden = !text; }
+function note(el, kind, html) { el.className = kind; el.innerHTML = html; el.hidden = false; }
+function loading(el, text = "Loading…") { el.innerHTML = `<p class="muted"><span class="spinner"></span> ${esc(text)}</p>`; }
+
+async function api(path, opts = {}) {
+  const { data } = await sb.auth.getSession();
+  const token = data.session?.access_token;
+  const res = await fetch(path, { ...opts, headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) } });
+  let body = null;
+  try { body = await res.json(); } catch { /* empty */ }
+  if (res.status === 401) { await sb.auth.signOut(); throw new Error(body?.detail || "Please log in again."); }
+  if (!res.ok) {
+    let msg = body?.detail;
+    if (Array.isArray(msg)) msg = msg.map((d) => (d.loc ? d.loc.slice(-1)[0] + ": " : "") + d.msg).join("; ");
+    if (res.status === 503 && body?.setup) msg += " Setup: " + body.setup.join(" ");
+    const err = new Error(msg || "Request failed (" + res.status + ")"); err.status = res.status; err.body = body; throw err;
+  }
+  return body;
+}
+const statusPill = (s) => `<span class="status st-${esc(s)}">${esc(String(s).replaceAll("_", " "))}</span>`;
+const what = (r) => [r.color, r.brand, r.item_name].filter(Boolean).join(" ");
+
+// ------------------------------------------------------------ boot / auth
+async function loadHealth() {
+  try {
+    const h = await (await fetch("/api/health")).json();
+    const b = $("engine");
+    if (h.chat_engine === "llm") { b.className = "badge llm"; b.textContent = "AI engine: local LLM (" + h.ollama.model + ")"; }
+    else if (h.chat_engine === "rules") { b.className = "badge rules"; b.textContent = "AI engine: rule-based mode (no LLM)"; }
+    else { b.className = "badge bad"; b.textContent = "LLM unavailable"; }
+    b.title = h.ollama.reason;
+    if (h.database !== "ok") showError("Database: " + h.database + ". See README → Supabase setup.");
+  } catch { $("engine").textContent = "API offline"; }
+}
+
+async function boot() {
+  loadHealth();
+  meta = await (await fetch("/api/locations")).json();
+  fillSelects(); buildForm("lost"); buildForm("found");
+  const cfg = await (await fetch("/api/public-config")).json();
+  if (!cfg.supabase_url || !cfg.supabase_publishable_key) {
+    showLanding();
+    showError("Login is not configured: set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in apps/api/.env and restart the server.");
+    $("auth-submit").disabled = true; return;
+  }
+  sb = supabase.createClient(cfg.supabase_url, cfg.supabase_publishable_key);
+  sb.auth.onAuthStateChange((_e, session) => { if (!session) showLanding(); });
+  const { data } = await sb.auth.getSession();
+  data.session ? enterApp() : showLanding();
+}
+
+function showLanding() { me = null; $("app").hidden = true; $("landing").hidden = false; $("logout").hidden = true; $("who").textContent = ""; }
+
+function setAuthMode(mode) {
+  authMode = mode;
+  $("tab-login").classList.toggle("active", mode === "login"); $("tab-register").classList.toggle("active", mode === "register");
+  $("name-row").hidden = mode !== "register"; $("auth-submit").textContent = mode === "login" ? "Log in" : "Create account";
+  $("password").autocomplete = mode === "login" ? "current-password" : "new-password"; $("auth-msg").hidden = true;
+}
+$("tab-login").onclick = () => setAuthMode("login");
+$("tab-register").onclick = () => setAuthMode("register");
+
+$("auth-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = $("auth-msg"), btn = $("auth-submit"); btn.disabled = true;
+  const email = $("email").value.trim(), password = $("password").value;
+  try {
+    if (authMode === "register") {
+      const name = $("reg-name").value.trim();
+      if (name.length < 2) throw new Error("Please enter your full name.");
+      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name } } });
+      if (error) throw error;
+      if (!data.session) { note(msg, "success", "Account created. Check your email to confirm it, then log in. (Admins can disable email confirmation in Supabase for the demo.)"); setAuthMode("login"); return; }
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    }
+    enterApp();
+  } catch (err) { note(msg, "error", esc(err.message)); }
+  finally { btn.disabled = false; }
+});
+
+$("logout").addEventListener("click", async () => { await sb.auth.signOut(); showLanding(); });
+
+async function enterApp() {
+  try { me = await api("/api/me"); }
+  catch (e) { showError(e.message); showLanding(); return; }
+  $("landing").hidden = true; $("app").hidden = false; $("logout").hidden = false;
+  $("who").textContent = me.name + " · " + me.role;
+  $("admin-tab").hidden = me.role !== "admin";
+  try { sessionId = localStorage.getItem("cf_session_" + me.id); } catch { sessionId = null; }
+  $("chatlog").innerHTML = "";
+  if (sessionId) {
+    try { const s = await api("/api/agent/sessions/" + sessionId); s.messages.forEach((m) => renderMessage(m.role, m.text, m)); }
+    catch { sessionId = null; }
+  }
+  if (!sessionId) greet();
+  updateSessionLabel(); refreshCounts();
+}
+
+// ------------------------------------------------------------ tabs
+function openTab(name) {
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  ["chat", "lost", "found", "search", "matches", "reports", "admin"].forEach((t) => { $("tab-" + t).hidden = t !== name; });
+  if (name === "matches") loadMatches();
+  if (name === "reports") loadReports();
+  if (name === "admin") loadAdmin();
+}
+document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => openTab(b.dataset.tab)));
+
+function fillSelects() {
+  document.querySelectorAll("[data-cats]").forEach((s) => meta.categories.forEach((c) => s.insertAdjacentHTML("beforeend", `<option value="${c}">${c.replace("_", " ")}</option>`)));
+  document.querySelectorAll("[data-locs]").forEach((s) => meta.locations.forEach((l) => s.insertAdjacentHTML("beforeend", `<option>${esc(l.name)}</option>`)));
+}
+
+// ------------------------------------------------------------ chat
+function greet() { renderMessage("assistant", "Hi " + me.name.split(" ")[0] + "! Tell me what you lost or found, and I'll take it from there. You can also search, or ask for 'my reports'.", {}); }
+function updateSessionLabel() { $("session-label").textContent = sessionId ? "Chat session " + sessionId.slice(0, 8) : "New chat session"; }
+$("new-chat").addEventListener("click", () => {
+  sessionId = null; try { localStorage.removeItem("cf_session_" + me.id); } catch {}
+  $("chatlog").innerHTML = ""; updateSessionLabel(); greet();
+});
+document.querySelectorAll("#suggest button").forEach((b) => b.addEventListener("click", () => { $("message").value = b.textContent; $("message").focus(); }));
+
+function candidateCard(c) {
+  const div = document.createElement("div"); div.className = "card";
+  const band = c.band === "strong_candidate" ? "Strong candidate" : "Possible candidate";
+  div.innerHTML = `<div class="row" style="justify-content:space-between">
+      <strong>${esc(c.item_code)} · ${esc(what(c))}</strong> <span class="badge">${esc(band)} · score ${Number(c.total_score).toFixed(2)}</span></div>
+    <div class="muted">${esc(c.location)} · ${esc(c.event_date)}${c.current_holding ? " · " + esc(c.current_holding) : ""}</div>
+    <div>Why it may match: ${esc(c.explanation)}</div>
+    <div class="muted">Potential match only. Please verify the details before we treat this as a match.</div>`;
+  if (c.report_type === "found" && c.match_id && c.match_status === "candidate") div.appendChild(ownerButtons(c.match_id));
+  else if (c.match_status && c.match_status !== "candidate") div.insertAdjacentHTML("beforeend", `<div class="muted">Match status: ${statusPill(c.match_status)}</div>`);
+  return div;
+}
+
+function ownerButtons(matchId) {
+  const box = document.createElement("div");
+  box.innerHTML = `<div class="row" style="margin-top:8px" data-a="btns">
+      <button class="btn" data-a="mine">Might be mine</button>
+      <button class="btn secondary" data-a="not">Not mine</button></div>
+    <div data-a="form" hidden style="margin-top:8px">
+      <label>Verification question: describe one detail only the real owner would know (what's inside, a mark, a sticker…)</label>
+      <textarea rows="2" maxlength="500"></textarea>
+      <div class="row" style="margin-top:6px"><button class="btn" data-a="submit">Send to admin</button></div>
+    </div>
+    <div data-a="result" hidden></div>`;
+  const q = (a) => box.querySelector(`[data-a="${a}"]`);
+  q("mine").onclick = () => { q("form").hidden = false; box.querySelector("textarea").focus(); };
+  q("not").onclick = async () => {
+    try { await api(`/api/matches/${matchId}/decline`, { method: "POST" }); q("btns").remove(); q("form").remove(); note(q("result"), "info", "Marked as not yours. Your report stays open."); refreshCounts(); }
+    catch (e) { note(q("result"), "error", esc(e.message)); }
+  };
+  q("submit").onclick = async () => {
+    const answer = box.querySelector("textarea").value.trim();
+    if (answer.length < 3) { note(q("result"), "error", "Please describe a detail (at least 3 characters)."); return; }
+    q("submit").disabled = true;
+    try {
+      const r = await api(`/api/matches/${matchId}/confirm`, { method: "POST", body: JSON.stringify({ answer }) });
+      q("btns").remove(); q("form").remove(); note(q("result"), "success", esc(r.message)); refreshCounts();
+    } catch (e) { q("submit").disabled = false; note(q("result"), "error", esc(e.message)); }
+  };
+  return box;
+}
+
+function renderMessage(role, text, extra) {
+  const log = $("chatlog"); const div = document.createElement("div");
+  div.className = "msg " + role; div.textContent = text;
+  if (role === "assistant" && (extra.mode || (extra.tool_calls || []).length)) {
+    const chips = document.createElement("div"); chips.className = "chips";
+    if (extra.mode) chips.insertAdjacentHTML("beforeend", `<span class="badge ${extra.mode === "llm" ? "llm" : extra.mode === "rules" ? "rules" : "bad"}">${extra.mode === "llm" ? "answered by local LLM" : extra.mode === "rules" ? "answered by rule engine" : "unavailable"}</span>`);
+    (extra.tool_calls || []).forEach((t) => chips.insertAdjacentHTML("beforeend", `<span class="chip ${t.ok ? "" : "err"}" title="${esc(JSON.stringify(t.input))}">🔧 ${esc(t.name)}: ${esc(t.summary)}</span>`));
+    div.appendChild(chips);
+  }
+  log.appendChild(div);
+  (extra.candidates || []).forEach((c) => log.appendChild(candidateCard(c)));
+  log.scrollTop = log.scrollHeight;
+}
+
+$("composer").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = $("message"); const text = input.value.trim(); if (!text) return;
+  input.value = ""; renderMessage("user", text, {});
+  const send = $("send"); send.disabled = true;
+  const typing = document.createElement("div"); typing.className = "msg assistant muted"; typing.innerHTML = '<span class="spinner"></span> Agent is working…';
+  $("chatlog").appendChild(typing); $("chatlog").scrollTop = 1e9;
+  try {
+    const r = await api("/api/agent/chat", { method: "POST", body: JSON.stringify({ session_id: sessionId, message: text }) });
+    sessionId = r.session_id; try { localStorage.setItem("cf_session_" + me.id, sessionId); } catch {}
+    typing.remove(); updateSessionLabel(); renderMessage("assistant", r.reply, r); refreshCounts();
+  } catch (err) { typing.remove(); renderMessage("assistant", "⚠️ " + err.message, {}); }
+  finally { send.disabled = false; input.focus(); }
+});
+
+// ------------------------------------------------------------ report forms
+function buildForm(type) {
+  const found = type === "found";
+  $("tab-" + type).innerHTML = `
+    <form class="card" id="form-${type}" novalidate>
+      <h3 style="margin-top:0">${found ? "Report a found item" : "Report a lost item"}</h3>
+      <p class="muted">Prefer talking? The AI Agent tab collects the same details through conversation.</p>
+      <div class="grid2">
+        <div><label>Category</label><select name="category" required><option value="">Choose…</option>${meta.categories.map((c) => `<option value="${c}">${c.replace("_", " ")}</option>`).join("")}</select></div>
+        <div><label>Item name</label><input name="item_name" maxlength="80" required placeholder="e.g. laptop bag"></div>
+        <div><label>Colour <span class="opt">(optional)</span></label><input name="color" maxlength="40" placeholder="e.g. black"></div>
+        <div><label>Brand <span class="opt">(optional)</span></label><input name="brand" maxlength="40" placeholder="e.g. HP"></div>
+        <div><label>${found ? "Where did you find it?" : "Where did you lose it?"}</label><select name="location" required><option value="">Choose…</option>${meta.locations.map((l) => `<option>${esc(l.name)}</option>`).join("")}</select></div>
+        <div class="grid2"><div><label>Date</label><input name="event_date" type="date" required></div>
+          <div><label>Time <span class="opt">(approx.)</span></label><input name="event_time" type="time"></div></div>
+      </div>
+      <label>Description <span class="opt">(distinguishing details: stickers, scratches, keychain…)</span></label>
+      <textarea name="description" rows="3" maxlength="1000" required></textarea>
+      ${found ? `<div class="grid2">
+        <div><label>Where is the item now?</label><select name="current_holding"><option value="finder">With me</option><option value="admin_office">Admin office</option><option value="security">Campus security</option></select></div>
+        <div><label>🔒 Private detail only the owner would know <span class="opt">(admins only)</span></label><input name="verification_hint" maxlength="300" placeholder="e.g. a photo inside the front pocket"></div></div>` : ""}
+      <div data-msg hidden></div>
+      <p><button class="btn" type="submit">${found ? "Submit found report" : "Submit lost report"}</button></p>
+    </form>
+    <div id="result-${type}"></div>`;
+  const form = $("form-" + type);
+  form.event_date.max = todayIso(); form.event_date.value = todayIso();
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = form.querySelector("[data-msg]"), btn = form.querySelector("button[type=submit]");
+    const fd = Object.fromEntries(new FormData(form).entries());
+    for (const k of Object.keys(fd)) if (fd[k] === "") delete fd[k];
+    const missing = ["category", "item_name", "location", "event_date", "description"].filter((k) => !fd[k]);
+    if (missing.length) { note(msg, "error", "Please fill in: " + missing.join(", ").replaceAll("_", " ")); return; }
+    if (fd.event_date > todayIso()) { note(msg, "error", "The date can't be in the future."); return; }
+    btn.disabled = true; note(msg, "muted", '<span class="spinner"></span> Saving and running matching…');
+    try {
+      const r = await api("/api/items/" + type, { method: "POST", body: JSON.stringify(fd) });
+      note(msg, "success", `Saved! Your report code is <b>${esc(r.code)}</b>.`);
+      form.reset(); form.event_date.value = todayIso();
+      const out = $("result-" + type); out.innerHTML = "";
+      const cands = r.matching?.candidates || [];
+      if (cands.length) { out.insertAdjacentHTML("beforeend", `<div class="info">I found a potentially matching report. Please verify the details before we treat this as a match.</div>`); cands.forEach((c) => out.appendChild(candidateCard(c))); }
+      else out.innerHTML = `<p class="muted">No potentially matching reports yet. ${found ? "If the owner reports it, the system will match it." : "You'll get a notification when something similar is reported."}</p>`;
+      refreshCounts();
+    } catch (err) {
+      if (err.status === 409 && err.body?.duplicate_of) note(msg, "info", `You already reported this as <b>${esc(err.body.duplicate_of)}</b>, so no duplicate was created.`);
+      else note(msg, "error", esc(err.message));
+    } finally { btn.disabled = false; }
+  });
+}
+
+// ------------------------------------------------------------ search
+function itemCard(r) {
+  return `<div class="card"><div class="row" style="justify-content:space-between"><strong>${esc(r.code)} · ${esc(what(r))}</strong>${statusPill(r.status)}</div>
+    <div>${esc(r.description)}</div>
+    <div class="muted">${esc(r.report_type)} · ${esc(r.category.replace("_", " "))} · ${esc(r.location)} · ${esc(r.event_date)}${r.current_holding ? " · " + esc(r.current_holding) : ""}</div></div>`;
+}
+$("search-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const out = $("search-results"); loading(out, "Searching…");
+  const p = new URLSearchParams();
+  [["q", "s-q"], ["type", "s-type"], ["category", "s-cat"], ["location", "s-loc"]].forEach(([k, id]) => { if ($(id).value) p.set(k, $(id).value); });
+  try {
+    const r = await api("/api/items/search?" + p.toString());
+    out.innerHTML = r.results.length ? `<p class="muted">${r.count} result(s). Search results are not matches; report your lost item to get scored candidates.</p>` + r.results.map(itemCard).join("")
+      : "<p class='muted'>No open reports match. Try fewer keywords.</p>";
+  } catch (err) { out.innerHTML = `<div class="error">${esc(err.message)}</div>`; }
+});
+
+// ------------------------------------------------------------ matches + reports
+const STEPS = [["candidate", "Candidate"], ["owner_confirmed", "Owner answered"], ["verified", "Admin verified"], ["closed", "Returned"]];
+function timeline(status) {
+  if (status === "rejected") return `<div class="timeline"><span class="done">Rejected</span></div>`;
+  const idx = STEPS.findIndex(([s]) => s === status);
+  return `<div class="timeline">${STEPS.map(([, label], i) => `<span class="${i <= idx ? "done" : ""}">${i + 1}. ${label}</span>`).join("")}</div>`;
+}
+
+async function refreshCounts() {
+  try {
+    const n = await api("/api/notifications"); $("notif-count").textContent = n.unread ? `(${n.unread})` : "";
+    const m = await api("/api/matches/mine"); const open = m.matches.filter((x) => x.status === "candidate").length;
+    $("match-count").textContent = open ? `(${open})` : "";
+  } catch { /* shown elsewhere */ }
+}
+
+async function loadMatches() {
+  const list = $("matches-list"); loading(list);
+  try {
+    const { matches } = await api("/api/matches/mine");
+    list.innerHTML = matches.length ? "" : "<p class='muted'>No candidates for your lost reports yet. You'll be notified when something similar is reported.</p>";
+    matches.forEach((m) => {
+      const f = m.found; const card = document.createElement("div"); card.className = "card";
+      card.innerHTML = `<div class="row" style="justify-content:space-between"><strong>${esc(f.code)} for your ${esc(m.lost_code)}</strong> ${statusPill(m.status)}</div>
+        <div>${esc(what(f))}: ${esc(f.description)}</div>
+        <div class="muted">${esc(f.location)} · ${esc(f.event_date)}${f.current_holding ? " · " + esc(f.current_holding) : ""} · score ${m.total_score.toFixed(2)}</div>
+        <div class="muted">Why it may match: ${esc(m.explanation)}</div>${timeline(m.status)}`;
+      if (m.status === "candidate") card.appendChild(ownerButtons(m.match_id));
+      list.appendChild(card);
+    });
+  } catch (e) { list.innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+}
+
+async function loadReports() {
+  loading($("notif-list"));
+  try {
+    const n = await api("/api/notifications");
+    $("notif-list").innerHTML = n.notifications.length ? "" : "<p class='muted'>No notifications.</p>";
+    n.notifications.forEach((x) => {
+      const d = document.createElement("div"); d.className = "card";
+      d.innerHTML = `<div>${x.status === "unread" ? "🔔 " : ""}${esc(x.message)}</div><div class="muted">${new Date(x.created_at).toLocaleString()} ${x.status === "unread" ? "· <a href='#'>mark read</a>" : ""}</div>`;
+      const a = d.querySelector("a");
+      if (a) a.onclick = async (ev) => { ev.preventDefault(); await api(`/api/notifications/${x.id}/read`, { method: "POST" }); loadReports(); refreshCounts(); };
+      $("notif-list").appendChild(d);
+    });
+    const { reports } = await api("/api/items/mine");
+    $("reports-table").innerHTML = "<tr><th>Code</th><th>Type</th><th>Item</th><th>Where / when</th><th>Status</th></tr>" +
+      (reports.length ? reports.map((r) => `<tr><td>${esc(r.code)}</td><td>${esc(r.report_type)}</td><td>${esc(what(r))}</td><td>${esc(r.location)} · ${esc(r.event_date)}</td><td>${statusPill(r.status)}</td></tr>`).join("")
+        : "<tr><td colspan='5' class='muted'>Nothing reported yet.</td></tr>");
+  } catch (e) { $("notif-list").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+}
+
+// ------------------------------------------------------------ admin
+function twoStep(btn, action) {
+  btn.addEventListener("click", async () => {
+    if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.dataset.label = btn.textContent; btn.textContent = "Click again to confirm"; return; }
+    btn.disabled = true;
+    try { await action(); loadAdmin(); }
+    catch (e) { const d = document.createElement("div"); d.className = "error"; d.textContent = e.message; btn.closest(".card").appendChild(d);
+                btn.disabled = false; btn.textContent = btn.dataset.label; btn.dataset.armed = ""; }
+  });
+}
+function side(title, r, extra) {
+  return `<div><strong>${esc(title)} ${esc(r.code)}</strong><div>${esc(what(r))} (${esc(r.category)})</div><div>${esc(r.description)}</div>
+    <div class="muted">${esc(r.location)} · ${esc(r.event_date)}</div>${extra || ""}</div>`;
+}
+async function loadAdmin() {
+  try {
+    const s = await api("/api/admin/stats");
+    const st = (label, n) => `<div class="stat"><b>${n}</b><span class="muted">${label}</span></div>`;
+    $("admin-stats").innerHTML = st("Lost reports", s.total_lost) + st("Found reports", s.total_found) +
+      st("Waiting for verification", s.matches.owner_confirmed || 0) + st("Items returned", s.returned);
+  } catch (e) { $("admin-stats").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+  const status = $("admin-status").value, list = $("admin-list"); loading(list);
+  try {
+    const { matches } = await api("/api/admin/matches?status=" + encodeURIComponent(status));
+    list.innerHTML = matches.length ? "" : "<p class='muted'>Nothing here.</p>";
+    matches.forEach((m) => {
+      const card = document.createElement("div"); card.className = "card";
+      card.innerHTML = `<div class="row" style="justify-content:space-between"><span>Score ${m.total_score.toFixed(2)} · ${esc(m.explanation)}</span> ${statusPill(m.status)}</div>
+        <div class="grid2" style="margin-top:8px">
+          ${side("Lost", m.lost, `<div class="private" style="margin-top:6px"><strong>Owner's answer:</strong> ${esc(m.owner_answer || "(not answered yet)")}</div>`)}
+          ${side("Found", m.found, `<div class="muted">Item is ${esc(m.found.current_holding || "with the finder")}</div>
+             <div class="private" style="margin-top:6px"><strong>🔒 Finder's private detail:</strong> ${esc(m.verification_hint || "(none)")}</div>`)}
+        </div>${timeline(m.status)}
+        ${m.reject_reason ? `<div class="muted">Reason: ${esc(m.reject_reason)}</div>` : ""}
+        <div class="row" style="margin-top:10px" data-actions></div>`;
+      const actions = card.querySelector("[data-actions]");
+      if (m.status === "owner_confirmed") { const v = document.createElement("button"); v.className = "btn"; v.textContent = "Verify ownership";
+        twoStep(v, () => api(`/api/admin/matches/${m.match_id}/verify`, { method: "POST", body: "{}" })); actions.appendChild(v); }
+      if (m.status === "verified") { const r = document.createElement("button"); r.className = "btn"; r.textContent = "Mark returned";
+        twoStep(r, () => api(`/api/admin/items/${m.found.code}/returned`, { method: "POST", body: "{}" })); actions.appendChild(r); }
+      if (["candidate", "owner_confirmed", "verified"].includes(m.status)) {
+        const reason = document.createElement("input"); reason.placeholder = "Reason (required to reject)"; reason.style.maxWidth = "260px";
+        const x = document.createElement("button"); x.className = "btn danger"; x.textContent = "Reject";
+        twoStep(x, () => api(`/api/admin/matches/${m.match_id}/reject`, { method: "POST", body: JSON.stringify({ reason: reason.value.trim() }) }));
+        actions.append(reason, x);
+      }
+      list.appendChild(card);
+    });
+    const { items } = await api("/api/admin/items");
+    $("admin-items").innerHTML = "<tr><th>Code</th><th>Type</th><th>Item</th><th>Where / when</th><th>Status</th></tr>" +
+      items.map((r) => `<tr><td>${esc(r.code)}</td><td>${esc(r.report_type)}</td><td>${esc(what(r))}</td><td>${esc(r.location)} · ${esc(r.event_date)}</td><td>${statusPill(r.status)}</td></tr>`).join("");
+  } catch (e) { list.innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+}
+$("admin-status").addEventListener("change", loadAdmin);
+$("admin-refresh").addEventListener("click", loadAdmin);
+
+boot().catch((e) => showError("Startup failed: " + e.message));
+</script>
+</body>
+</html>

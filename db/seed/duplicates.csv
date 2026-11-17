@@ -1,0 +1,6 @@
+code,type,category,item_name,brand,color,description,location,date,time,created_by,duplicate_of
+D01,lost,bag,laptop bag,HP,black,"Lost my black HP laptop bag in CSE, it has a red keychain",CSE Block,2026-09-29,14:00,stu01,L01
+D02,lost,electronics,calculator,Casio,grey,"Casio fx-991 calculator lost in Mech block",Mech Block,2026-09-27,10:30,stu03,L03
+D03,lost,electronics,earbuds,boAt,black,"boAt airdopes lost at the auditorium event",Auditorium,2026-09-25,17:00,stu05,L05
+D04,found,bottle,water bottle,Milton,blue,"Found a blue Milton bottle with stickers in the library reading hall",Central Library,2026-09-28,16:10,stu22,F02
+D05,found,id_card,ID card,,white,"ID card with blue lanyard found at E&TC",E&TC Block,2026-09-29,11:05,stu27,F07

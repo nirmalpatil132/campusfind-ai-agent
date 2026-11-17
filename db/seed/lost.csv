@@ -1,0 +1,21 @@
+code,category,item_name,brand,color,description,location,date,time,created_by
+L01,bag,laptop bag,HP,black,"Black HP laptop bag, red keychain on zip, ID card in front pocket",CSE Block,2026-09-29,14:00,stu01
+L02,bottle,water bottle,,blue,"Blue water bottle with stickers",Central Library,2026-09-28,11:30,stu02
+L03,electronics,calculator,Casio,grey,"Casio fx-991ES calculator, name RIYA scratched on back",Mech Block,2026-09-27,10:00,stu03
+L04,wallet,wallet,Wildcraft,brown,"Brown leather wallet, bus pass and two photos inside",Main Canteen,2026-09-26,13:15,stu04
+L05,electronics,earbuds,boAt,black,"boAt Airdopes, black case with small crack on lid",Auditorium,2026-09-25,17:00,stu05
+L06,keys,key bunch,,silver,"Bunch of 3 keys with a blue football keyring",Sports Ground,2026-09-28,18:30,stu06
+L07,id_card,college ID card,,white,"College ID card, 3rd year E&TC, blue lanyard",E&TC Block,2026-09-29,09:45,stu07
+L08,clothing,hooded jacket,Puma,navy,"Navy blue hooded jacket size M, ink stain on left sleeve",Boys Hostel A,2026-09-24,20:00,stu08
+L09,jewellery,watch,Titan,gold,"Gold-coloured Titan watch with brown leather strap",Girls Hostel B,2026-09-27,07:30,stu09
+L10,book,textbook,,,"Engineering Mathematics III textbook, name inside cover, yellow highlighter marks",Central Library,2026-09-30,12:00,stu10
+L11,bag,laptop bag,Dell,black,"Black Dell laptop bag with charger inside",CSE Block,2026-09-29,15:00,stu11
+L12,bottle,steel bottle,Milton,blue,"Blue Milton steel bottle, dent near bottom",Civil Block,2026-09-21,10:00,stu12
+L13,id_card,college ID card,,white,"College ID card, 2nd year CSE, red lanyard",Main Canteen,2026-09-28,13:00,stu13
+L14,other,umbrella,,black,"Black folding umbrella with wooden handle",Bus Stop,2026-09-22,08:30,stu14
+L15,electronics,earphones,boAt,white,"White boAt wired earphones",Workshop,2026-09-26,11:00,stu15
+L16,stationery,pen,Parker,black,"Black Parker pen with gift engraving",Admin Building,2026-09-29,16:00,stu16
+L17,electronics,phone,Redmi,blue,"Redmi Note phone, blue back cover with college sticker",Parking Lot,2026-09-30,08:50,stu17
+L18,clothing,cap,,red,"Red cricket cap",Sports Ground,2026-09-25,17:30,stu18
+L19,stationery,drawing kit,,,"Engineering drawing kit with mini-drafter, name label on case",Mech Block,2026-09-23,14:30,stu19
+L20,wallet,card holder,,black,"Black card holder with bus card and library card",Auditorium,2026-09-29,19:00,stu20

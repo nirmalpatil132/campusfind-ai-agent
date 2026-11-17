@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+anthropic
+openai
+psycopg[binary,pool]
+pgvector
+pyjwt[crypto]
+slowapi
+httpx
+pytest
+tzdata
