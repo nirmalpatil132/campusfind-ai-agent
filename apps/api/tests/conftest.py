@@ -42,3 +42,5 @@ def isolated_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "LLM_PROVIDER", "auto")
     monkeypatch.setattr(db, "_pool", None)
     llm._status_cache.update(at=0.0, value=None)
+    from app import ratelimit
+    ratelimit.limiter.reset()  # rate-limit counters never leak between tests

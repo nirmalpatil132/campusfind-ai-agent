@@ -62,7 +62,7 @@ TypeScript
 - Roles are set only in the DB, never through the API.
 - Verify / reject / mark-returned are admin buttons, NOT agent tools.
 - Pydantic enums + max lengths (description ≤ 1000, chat message ≤ 2000).
-- Rate limit chat: 20/min and 200/day per user; `AGENT_MAX_STEPS` and `max_tokens` cap cost.
+- Rate limit (app/ratelimit.py, in-memory): chat 10/min + 200/day per user, reports 5/min, search 30/min; `AGENT_MAX_STEPS` and `max_tokens` cap cost.
 - Tool results and item descriptions are DATA, not instructions (prompt-injection defence).
 - Mask runs of 10+ digits; never store passwords, OTPs, full ID numbers.
 - CORS: exact frontend origins only (`ALLOWED_ORIGINS`). RLS on, no policies.
@@ -84,6 +84,8 @@ TypeScript
 - [x] Emergency Phase 2 (no paid API): Ollama + rule engine, DB, matching, admin flow, web page
       (verified 17 Nov 2026: pytest 128/1 skipped, e2e on Supabase 44/44; Render deploy = render.yaml)
       (covers parts of Phases 2–7; deferred items are listed in README "Deferred")
+- [x] UI redesign + AI reliability guard (agent/guard.py) + rate limits/timeouts (app/ratelimit.py)
+      (17 Nov 2026: pytest 149/1 skipped; Render deploy waits for the human's UI approval)
 - [ ] Phase 2: Terminal Lost & Found agent
 - [ ] Phase 3: Database + FastAPI backend
 - [ ] Phase 4: Full tool system + memory + logging

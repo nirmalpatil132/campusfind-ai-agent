@@ -1,6 +1,9 @@
-# Render Blueprint for CampusFind AI (free web service).
-# Ollama cannot run on Render's free plan, so the hosted app uses the rule-based engine
-# (LLM_PROVIDER=rules) and structured-only matching (EMBEDDING_PROVIDER=none).
+# Render Blueprint for CampusFind AI (free web service: no card needed, $0).
+# Free plan facts (render.com/docs/free): sleeps after 15 min without traffic (first visit then
+# takes about a minute), 750 free instance hours per month, small instance (about 512 MB RAM).
+# Ollama cannot run there and must NOT point at a personal laptop, so the hosted app uses the
+# rule-based engine (LLM_PROVIDER=rules) and structured-only matching (EMBEDDING_PROVIDER=none).
+# One instance + in-memory rate limits (counters are per process; see app/ratelimit.py).
 # Secret values (sync: false) are typed into the Render dashboard, never committed.
 services:
   - type: web
@@ -20,6 +23,8 @@ services:
         value: rules
       - key: EMBEDDING_PROVIDER
         value: none
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL

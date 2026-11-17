@@ -83,6 +83,7 @@ def transcript(session_id: str, user: Any) -> list[dict[str, Any]]:
     for r in rows:
         c = r["content"] or {}
         out.append({"role": r["role"], "text": c.get("text", ""), "mode": c.get("mode"),
+                    "reply_source": c.get("reply_source"),
                     "tool_calls": c.get("tool_calls", []), "candidates": c.get("candidates", []),
                     "created_at": r["created_at"].isoformat()})
     return out

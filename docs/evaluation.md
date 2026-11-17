@@ -98,3 +98,27 @@ The real-DB pytest (`RUN_DB_TESTS=1 python -m pytest tests/test_db_integration.p
 `qwen2.5:3b` on Ollama, on the demo laptop (i3-1115G4, 8 GB RAM, no GPU). The question "What reports have I made?" made the model choose the `get_my_reports` tool by itself and summarise the result correctly. It took **58 s**, including loading the model. Conclusion: LLM mode works but is slow on this CPU, so the timed demo uses rule mode and shows LLM mode once.
 
 Not measured yet: §20 extraction accuracy and tool-selection scores over many prompts with the real LLM.
+
+## AI reliability fix + request protection (17 Nov 2026, after browser testing)
+
+**Bug found in the browser** (real qwen2.5:3b, the "iQube scooter key" chat):
+- The model invented a location ("Main Canteen") and a time.
+- It claimed "I have created a lost report" before any save.
+- After "yes confirm", it saved a **found** report for a **lost** key.
+
+**Fix** (`app/agent/guard.py`): in LLM mode, a create call only proposes a draft.
+- The report type comes from the student's words.
+- Fields the student never typed are dropped and asked for.
+- The deterministic form step asks for missing details, shows the summary, and saves only after "yes".
+- False "saved" claims are replaced, and tool errors are shown as short friendly statuses.
+
+| Check | Result |
+|---|---|
+| `pytest` (all) | **149 passed, 1 skipped** (21 new) |
+| `test_guard.py` | Exact replay of the iQube chat with a scripted model: invented fields dropped, location question asked, nothing saved until "yes confirm", then a LOST report with no invented time. Also: wrong-type call corrected, false "saved" claim replaced, Ollama timeout → labelled rule fallback, friendly tool chips |
+| `test_ratelimit.py` | Sliding window, per-user chat/report limits → 429 + `Retry-After`, per-IP flood guard (health never limited), 413 for big bodies, consistent `{detail, code}` errors, busy LLM slot fails fast |
+| Real qwen2.5:3b replay (no DB) | The model chose `create_lost_report`; the server dropped "Main Canteen"/10:30 and asked "Where did you last have it?"; after "near the parking lot", "yesterday" and "yes confirm" → `create_lost_report(location=Parking Lot, lost_date=2026-11-16, brand=iQube)`. No found report. First reply 108 s (cold model) |
+| Live Supabase, read-only (15 checks) | Connection with timeouts OK, `statement_timeout` = 15 s, 11 tables, JWKS, signup trigger installed, every auth user has a profile, student 403 on admin routes, no private hint in search, 401 without a token |
+| UI | JavaScript syntax check OK. Screenshots at 1440 px and 390 px on every screen, using fake preview data. Phone chat width fixed after review |
+
+Not re-run after this change: `e2e_check.py`, which writes real rows. Run it after `reset_demo.py --yes` (see the beginner guide).

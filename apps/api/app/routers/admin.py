@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
+from app.ratelimit import limit
 from app.auth import CurrentUser, require_admin
 from app.schemas.api import AdminNote, RejectRequest
 from app.services import matches
@@ -22,18 +23,18 @@ def queue(status: MatchStatus = "owner_confirmed") -> dict:
     return {"matches": matches.admin_queue(status)}
 
 
-@router.post("/matches/{match_id}/verify")
+@router.post("/matches/{match_id}/verify", dependencies=[Depends(limit("admin"))])
 def verify(match_id: UUID, body: AdminNote | None = None,
            admin: CurrentUser = Depends(require_admin)) -> dict:
     return matches.verify(admin, str(match_id), body.note if body else None)
 
 
-@router.post("/matches/{match_id}/reject")
+@router.post("/matches/{match_id}/reject", dependencies=[Depends(limit("admin"))])
 def reject(match_id: UUID, body: RejectRequest, admin: CurrentUser = Depends(require_admin)) -> dict:
     return matches.reject(admin, str(match_id), body.reason)
 
 
-@router.post("/items/{code}/returned")
+@router.post("/items/{code}/returned", dependencies=[Depends(limit("admin"))])
 def returned(code: str, body: AdminNote | None = None,
              admin: CurrentUser = Depends(require_admin)) -> dict:
     return matches.mark_returned(admin, code, body.note if body else None)

@@ -2,610 +2,1535 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CampusFind AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CampusFind AI · Campus Lost & Found</title>
+<meta name="description" content="CampusFind AI: report lost and found items on campus with an AI assistant. Every claim is verified by a human admin.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
-  :root {
-    --navy: #13233f; --muted: #5b6b85; --line: #e3e8f0; --bg: #ffffff; --soft: #f5f7fb;
-    --accent: #0e7c66; --accent-soft: #e6f4f1; --warn: #9a6100; --warn-soft: #fff6e5;
-    --bad: #b42318; --bad-soft: #fdecea; --ok: #067647; --ok-soft: #ecfdf3;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--navy); background: var(--bg); }
-  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--line);
-           position: sticky; top: 0; background: #fff; z-index: 5; }
-  header h1 { font-size: 18px; margin: 0; } header h1 span { color: var(--accent); }
-  .spacer { flex: 1; }
-  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
-           background: var(--soft); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
-  .badge.llm { background: var(--accent-soft); color: var(--accent); border-color: #bfe3da; }
-  .badge.rules { background: var(--warn-soft); color: var(--warn); border-color: #f3dcae; }
-  .badge.bad { background: var(--bad-soft); color: var(--bad); border-color: #f5c2bd; }
-  main { max-width: 980px; margin: 0 auto; padding: 16px; }
-  nav.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
-  nav.tabs button { background: none; border: none; padding: 10px 12px; font: inherit; color: var(--muted); cursor: pointer;
-                    border-bottom: 2px solid transparent; white-space: nowrap; }
-  nav.tabs button.active { color: var(--navy); border-bottom-color: var(--accent); font-weight: 600; }
-  .btn { font: inherit; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent);
-         color: #fff; cursor: pointer; }
-  .btn.secondary { background: #fff; color: var(--accent); }
-  .btn.danger { background: #fff; color: var(--bad); border-color: var(--bad); }
-  .btn:disabled { opacity: .55; cursor: default; }
-  input, textarea, select { font: inherit; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; width: 100%;
-                            color: var(--navy); background: #fff; }
-  label { display: block; font-weight: 600; margin: 10px 0 4px; font-size: 14px; }
-  label .opt { font-weight: 400; color: var(--muted); }
-  .card { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 10px 0; background: #fff; }
-  .muted { color: var(--muted); font-size: 13px; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  @media (max-width: 700px) { .grid2, .grid3 { grid-template-columns: 1fr; } .grid4 { grid-template-columns: 1fr 1fr; } }
-  .error { color: var(--bad); background: var(--bad-soft); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
-  .success { color: var(--ok); background: var(--ok-soft); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
-  .info { color: var(--warn); background: var(--warn-soft); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
-  /* landing */
-  .hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; align-items: start; margin-top: 12px; }
-  @media (max-width: 800px) { .hero { grid-template-columns: 1fr; } }
-  .hero h2 { font-size: 30px; line-height: 1.2; margin: 8px 0 12px; }
-  .steps { counter-reset: s; list-style: none; padding: 0; }
-  .steps li { counter-increment: s; padding: 6px 0 6px 36px; position: relative; }
-  .steps li::before { content: counter(s); position: absolute; left: 0; top: 6px; width: 24px; height: 24px; border-radius: 50%;
-                      background: var(--accent-soft); color: var(--accent); font-weight: 700; text-align: center; line-height: 24px; font-size: 13px; }
-  .authtabs { display: flex; gap: 6px; margin-bottom: 8px; }
-  .authtabs button { flex: 1; padding: 8px; border: 1px solid var(--line); background: var(--soft); border-radius: 8px; font: inherit; cursor: pointer; }
-  .authtabs button.active { background: #fff; border-color: var(--accent); color: var(--accent); font-weight: 600; }
-  /* chat */
-  #chatlog { border: 1px solid var(--line); border-radius: 12px; padding: 12px; height: 55vh; overflow-y: auto; background: var(--soft); }
-  .msg { max-width: 85%; margin: 8px 0; padding: 10px 12px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
-  .msg.user { margin-left: auto; background: var(--navy); color: #fff; border-bottom-right-radius: 4px; }
-  .msg.assistant { background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 4px; }
-  .chips { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
-  .chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft); border: 1px solid var(--line); }
-  .chip.err { color: var(--bad); border-color: #f5c2bd; }
-  .suggest { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-  .suggest button { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--navy); }
-  #composer { display: flex; gap: 8px; margin-top: 10px; } #composer input { flex: 1; }
-  /* status */
-  .status { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
-  .st-open, .st-candidate { background: var(--soft); }
-  .st-matched, .st-owner_confirmed { background: var(--warn-soft); color: var(--warn); }
-  .st-verified { background: var(--accent-soft); color: var(--accent); }
-  .st-returned, .st-closed { background: var(--ok-soft); color: var(--ok); }
-  .st-rejected, .st-cancelled { background: var(--bad-soft); color: var(--bad); }
-  .timeline { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; }
-  .timeline span { padding: 2px 8px; border-radius: 6px; background: var(--soft); color: var(--muted); }
-  .timeline span.done { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-  .private { background: var(--warn-soft); border: 1px dashed #e0b45c; border-radius: 8px; padding: 8px; }
-  .stat { border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
-  .stat b { display: block; font-size: 24px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  .tablewrap { overflow-x: auto; }
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent);
-             border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* =====================================================================
+   Design tokens
+   ===================================================================== */
+:root {
+  --primary: #0F766E; --primary-600: #0D9488; --primary-700: #115E59; --accent: #14B8A6;
+  --primary-50: #F0FDFA; --primary-100: #CCFBF1; --primary-200: #99F6E4;
+  --navy: #0F172A; --navy-800: #1E293B; --navy-700: #334155;
+  --text: #0F172A; --muted: #64748B; --subtle: #94A3B8;
+  --bg: #F8FAFC; --surface: #FFFFFF; --surface-2: #F1F5F9; --line: #E2E8F0; --line-strong: #CBD5E1;
+  --ok: #047857; --ok-bg: #ECFDF5; --ok-line: #A7F3D0;
+  --warn: #B45309; --warn-bg: #FFFBEB; --warn-line: #FDE68A;
+  --bad: #B91C1C; --bad-bg: #FEF2F2; --bad-line: #FECACA;
+  --info: #1D4ED8; --info-bg: #EFF6FF; --info-line: #BFDBFE;
+  --violet: #6D28D9; --violet-bg: #F5F3FF; --violet-line: #DDD6FE;
+  --radius-sm: 8px; --radius: 12px; --radius-lg: 16px; --radius-xl: 22px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, .06);
+  --shadow: 0 1px 3px rgba(15, 23, 42, .06), 0 4px 14px rgba(15, 23, 42, .05);
+  --shadow-lg: 0 12px 40px rgba(15, 23, 42, .12);
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --sidebar: 248px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font: 15px/1.55 var(--font); color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased; }
+img, svg { max-width: 100%; }
+h1, h2, h3, h4 { font-family: var(--font-head); letter-spacing: -.02em; margin: 0; color: var(--navy); }
+p { margin: 0; }
+a { color: var(--primary); }
+button, input, select, textarea { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+.icon { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon.sm { width: 15px; height: 15px; } .icon.lg { width: 22px; height: 22px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 3px solid rgba(20, 184, 166, .45); outline-offset: 2px; }
+
+/* =====================================================================
+   Buttons, inputs, badges
+   ===================================================================== */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 10px;
+       border: 1px solid transparent; background: var(--primary); color: #fff; font-weight: 600; font-size: 14.5px; cursor: pointer;
+       transition: background .15s, box-shadow .15s, transform .05s, border-color .15s; white-space: nowrap; text-decoration: none; }
+.btn:hover { background: var(--primary-700); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.btn.secondary { background: var(--surface); color: var(--navy); border-color: var(--line-strong); }
+.btn.secondary:hover { background: var(--surface-2); }
+.btn.ghost { background: transparent; color: var(--navy-700); }
+.btn.ghost:hover { background: var(--surface-2); }
+.btn.danger { background: var(--surface); color: var(--bad); border-color: var(--bad-line); }
+.btn.danger:hover { background: var(--bad-bg); }
+.btn.danger-solid { background: var(--bad); }
+.btn.danger-solid:hover { background: #991B1B; }
+.btn.navy { background: var(--navy); } .btn.navy:hover { background: var(--navy-800); }
+.btn.sm { padding: 7px 12px; font-size: 13.5px; border-radius: 8px; }
+.btn.lg { padding: 13px 22px; font-size: 15.5px; border-radius: 12px; }
+.btn.block { width: 100%; }
+.icon-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line);
+            background: var(--surface); color: var(--navy-700); cursor: pointer; position: relative; }
+.icon-btn:hover { background: var(--surface-2); }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .label { font-weight: 600; font-size: 13.5px; color: var(--navy-800); }
+.label .opt, .field > label .opt { font-weight: 400; color: var(--muted); }
+.input, input[type=text], input[type=email], input[type=password], input[type=date], input[type=time], input[type=search], select, textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface);
+  transition: border-color .15s, box-shadow .15s; font-size: 14.5px; min-height: 42px; }
+textarea { resize: vertical; min-height: 84px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(20, 184, 166, .15); }
+.field.invalid input, .field.invalid select, .field.invalid textarea { border-color: var(--bad); box-shadow: 0 0 0 4px rgba(185, 28, 28, .08); }
+.field .err { color: var(--bad); font-size: 12.5px; display: none; }
+.field.invalid .err { display: block; }
+.hint { color: var(--muted); font-size: 12.5px; }
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 46px; }
+.pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; padding: 6px; border-radius: 8px; color: var(--muted); cursor: pointer; }
+.pw-toggle:hover { color: var(--navy); background: var(--surface-2); }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+         border: 1px solid var(--line); background: var(--surface-2); color: var(--navy-700); white-space: nowrap; line-height: 1.5; }
+.badge .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.badge.teal { background: var(--primary-50); color: var(--primary); border-color: var(--primary-200); }
+.badge.amber { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
+.badge.green { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-line); }
+.badge.red { background: var(--bad-bg); color: var(--bad); border-color: var(--bad-line); }
+.badge.blue { background: var(--info-bg); color: var(--info); border-color: var(--info-line); }
+.badge.violet { background: var(--violet-bg); color: var(--violet); border-color: var(--violet-line); }
+.badge.navy { background: var(--navy); color: #fff; border-color: var(--navy); }
+.count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--accent);
+         color: #fff; font-size: 11.5px; font-weight: 700; }
+.icon-btn .count { position: absolute; top: -6px; right: -6px; border: 2px solid var(--surface); }
+
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1px solid; font-size: 14px; }
+.alert .icon { margin-top: 1px; }
+.alert.error { background: var(--bad-bg); color: var(--bad); border-color: var(--bad-line); }
+.alert.success { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-line); }
+.alert.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
+.alert.info { background: var(--primary-50); color: var(--primary-700); border-color: var(--primary-200); }
+
+.spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .7s linear infinite; flex: none; }
+.spinner.dark { border-color: var(--line); border-top-color: var(--primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.skeleton { border-radius: 12px; background: linear-gradient(90deg, #EEF2F6 25%, #F8FAFC 50%, #EEF2F6 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* =====================================================================
+   Cards & layout helpers
+   ===================================================================== */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.card.pad { padding: 20px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.card-head h3 { font-size: 16px; }
+.card-body { padding: 20px; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.between { justify-content: space-between; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.span2 { grid-column: span 2; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.tiny { font-size: 12px; }
+.strong { font-weight: 600; }
+.mt { margin-top: 16px; } .mt-sm { margin-top: 8px; } .mt-lg { margin-top: 28px; }
+.code-pill { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86em; font-weight: 600; padding: 1px 7px; border-radius: 6px;
+             background: var(--primary-50); color: var(--primary-700); border: 1px solid var(--primary-100); white-space: nowrap; }
+.empty { text-align: center; padding: 36px 20px; color: var(--muted); }
+.empty .empty-icon { width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 16px; display: grid; place-items: center; background: var(--primary-50); color: var(--primary); }
+.empty h4 { font-size: 16px; margin-bottom: 4px; }
+.empty p { max-width: 420px; margin: 0 auto; font-size: 14px; }
+.empty .btn { margin-top: 14px; }
+.divider { height: 1px; background: var(--line); margin: 16px 0; }
+
+@media (max-width: 960px) { .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g3 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .g2, .g3 { grid-template-columns: 1fr; } .span2 { grid-column: auto; } }
+
+/* =====================================================================
+   Landing page
+   ===================================================================== */
+.landing { min-height: 100vh; background:
+  radial-gradient(1100px 520px at 85% -10%, rgba(20, 184, 166, .16), transparent 60%),
+  radial-gradient(800px 420px at -10% 10%, rgba(15, 118, 110, .10), transparent 60%), var(--bg); }
+.l-nav { max-width: 1180px; margin: 0 auto; padding: 18px 24px; display: flex; align-items: center; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-head); font-weight: 800; font-size: 19px; color: var(--navy); text-decoration: none; letter-spacing: -.02em; }
+.brand-mark { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; color: #fff;
+              background: linear-gradient(135deg, var(--primary), var(--accent)); box-shadow: 0 6px 16px rgba(15, 118, 110, .3); }
+.brand span em { font-style: normal; color: var(--primary); }
+.l-nav .links { display: flex; gap: 4px; margin-left: auto; }
+.l-nav .links a { color: var(--navy-700); text-decoration: none; font-weight: 500; padding: 8px 12px; border-radius: 8px; font-size: 14.5px; }
+.l-nav .links a:hover { background: rgba(15, 23, 42, .05); }
+.hero { max-width: 1180px; margin: 0 auto; padding: 36px 24px 56px; display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; background: var(--surface);
+           border: 1px solid var(--line); box-shadow: var(--shadow-sm); font-size: 13px; font-weight: 600; color: var(--navy-700); }
+.eyebrow .pill { background: var(--primary); color: #fff; border-radius: 999px; padding: 2px 9px; font-size: 11.5px; }
+.hero h1 { font-size: clamp(34px, 5vw, 56px); line-height: 1.05; margin: 20px 0 18px; font-weight: 800; letter-spacing: -.035em; }
+.hero h1 .grad { background: linear-gradient(90deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero .lead { font-size: 18px; color: var(--navy-700); max-width: 560px; }
+.hero .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+.trust-row { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 28px; color: var(--navy-700); font-size: 13.5px; font-weight: 500; }
+.trust-row span { display: inline-flex; align-items: center; gap: 7px; }
+.trust-row .icon { color: var(--primary); }
+.auth-card { padding: 28px; border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); border: 1px solid var(--line); background: rgba(255, 255, 255, .96); }
+.auth-card h2 { font-size: 22px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 12px; margin: 18px 0 20px; }
+.seg button { border: 0; background: transparent; padding: 9px; border-radius: 9px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.seg button.active { background: var(--surface); color: var(--navy); box-shadow: var(--shadow-sm); }
+.auth-card form { display: flex; flex-direction: column; gap: 14px; }
+.auth-foot { text-align: center; font-size: 12.5px; color: var(--muted); margin-top: 16px; }
+.section { max-width: 1180px; margin: 0 auto; padding: 56px 24px; }
+.section-head { text-align: center; max-width: 640px; margin: 0 auto 36px; }
+.section-head .kicker { color: var(--primary); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.section-head h2 { font-size: clamp(26px, 3.4vw, 36px); margin: 8px 0 10px; }
+.section-head p { color: var(--muted); font-size: 16px; }
+.step-card { padding: 24px; position: relative; }
+.step-num { position: absolute; top: 18px; right: 20px; font-family: var(--font-head); font-weight: 800; font-size: 32px; color: var(--primary-100); }
+.feature-icon { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; background: var(--primary-50); color: var(--primary); margin-bottom: 14px; }
+.step-card h3, .trust-card h3 { font-size: 17px; margin-bottom: 6px; }
+.step-card p, .trust-card p { color: var(--muted); font-size: 14.5px; }
+.trust-band { background: var(--navy); color: #E2E8F0; }
+.trust-band .section-head h2 { color: #fff; } .trust-band .section-head p { color: #94A3B8; }
+.trust-card { padding: 24px; border-radius: var(--radius-lg); background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .09); }
+.trust-card h3 { color: #fff; } .trust-card p { color: #94A3B8; }
+.trust-card .feature-icon { background: rgba(20, 184, 166, .14); color: var(--accent); }
+.l-footer { text-align: center; padding: 28px 24px 40px; color: var(--muted); font-size: 13px; }
+@media (max-width: 920px) { .hero { grid-template-columns: 1fr; gap: 32px; padding-top: 16px; } .l-nav .links a.hide-sm { display: none; } }
+
+/* =====================================================================
+   App shell
+   ===================================================================== */
+.shell { display: grid; grid-template-columns: var(--sidebar) 1fr; min-height: 100vh; }
+.sidebar { background: var(--navy); color: #CBD5E1; padding: 18px 14px; display: flex; flex-direction: column; gap: 6px;
+           position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sidebar .brand { color: #fff; padding: 4px 8px 18px; }
+.sidebar .brand span em { color: var(--accent); }
+.nav-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #64748B; padding: 14px 12px 6px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: #CBD5E1; text-decoration: none;
+            font-weight: 500; font-size: 14.5px; border: 0; background: none; cursor: pointer; width: 100%; text-align: left; }
+.nav-item:hover { background: rgba(255, 255, 255, .06); color: #fff; }
+.nav-item.active { background: rgba(20, 184, 166, .16); color: #fff; box-shadow: inset 3px 0 0 var(--accent); }
+.nav-item.active .icon { color: var(--accent); }
+.nav-item .count { margin-left: auto; }
+.sidebar-foot { margin-top: auto; padding: 14px 8px 4px; }
+.engine-card { border-radius: 12px; padding: 12px; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .08); font-size: 12.5px; }
+.engine-card .t { color: #fff; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.engine-card .s { color: #94A3B8; margin-top: 4px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--subtle); box-shadow: 0 0 0 3px rgba(148, 163, 184, .2); flex: none; }
+.status-dot.llm { background: #2DD4BF; box-shadow: 0 0 0 3px rgba(45, 212, 191, .25); }
+.status-dot.rules { background: #FBBF24; box-shadow: 0 0 0 3px rgba(251, 191, 36, .22); }
+.status-dot.bad { background: #F87171; box-shadow: 0 0 0 3px rgba(248, 113, 113, .22); }
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; padding: 14px 28px;
+          background: rgba(248, 250, 252, .86); backdrop-filter: saturate(160%) blur(10px); border-bottom: 1px solid var(--line); }
+.topbar h1 { font-size: 20px; }
+.topbar .sub { font-size: 13px; color: var(--muted); }
+.topbar .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.engine-pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; background: var(--surface);
+               border: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--navy-700); }
+.user-chip { display: flex; align-items: center; gap: 10px; padding: 4px 6px 4px 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px;
+          background: linear-gradient(135deg, var(--primary), var(--accent)); flex: none; }
+.user-chip .meta { line-height: 1.2; padding-right: 6px; }
+.user-chip .meta b { display: block; font-size: 13.5px; }
+.user-chip .meta small { color: var(--muted); font-size: 11.5px; text-transform: capitalize; }
+.content { padding: 28px; max-width: 1240px; width: 100%; margin: 0 auto; }
+.menu-btn { display: none; }
+.scrim { display: none; }
+.popover { position: absolute; right: 0; top: calc(100% + 8px); width: min(360px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line);
+           border-radius: 14px; box-shadow: var(--shadow-lg); z-index: 40; overflow: hidden; }
+.popover .ph { padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+.popover .pl { max-height: 360px; overflow-y: auto; }
+.popover .pi { padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.popover .pi:last-child { border-bottom: 0; }
+.popover .pi.unread { background: var(--primary-50); }
+.rel { position: relative; }
+@media (max-width: 1024px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 272px; z-index: 60; transform: translateX(-100%); transition: transform .22s ease; }
+  .sidebar.open { transform: none; }
+  .scrim.open { display: block; position: fixed; inset: 0; background: rgba(15, 23, 42, .45); z-index: 55; }
+  .menu-btn { display: inline-grid; }
+  .topbar { padding: 12px 16px; }
+  .content { padding: 18px 16px; }
+  .engine-pill .txt, .user-chip .meta { display: none; }
+}
+@media (max-width: 520px) { .topbar .sub { display: none; } .topbar h1 { font-size: 17px; } }
+
+/* =====================================================================
+   Page components
+   ===================================================================== */
+.welcome { padding: 26px; border-radius: var(--radius-xl); color: #fff; position: relative; overflow: hidden;
+           background: linear-gradient(120deg, var(--navy) 0%, #12313B 55%, var(--primary) 130%); box-shadow: var(--shadow); }
+.welcome::after { content: ""; position: absolute; right: -60px; top: -80px; width: 280px; height: 280px; border-radius: 50%;
+                  background: radial-gradient(circle, rgba(20, 184, 166, .45), transparent 70%); }
+.welcome h2 { color: #fff; font-size: 24px; position: relative; }
+.welcome p { color: #CBD5E1; margin-top: 6px; position: relative; max-width: 620px; }
+.welcome .row { margin-top: 18px; position: relative; }
+.welcome .btn.secondary { background: rgba(255, 255, 255, .1); color: #fff; border-color: rgba(255, 255, 255, .22); }
+.welcome .btn.secondary:hover { background: rgba(255, 255, 255, .18); }
+.stat { padding: 18px; display: flex; gap: 14px; align-items: flex-start; }
+.si { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+.stat .v { font-family: var(--font-head); font-weight: 800; font-size: 26px; line-height: 1.1; color: var(--navy); }
+.stat .l { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.si.teal { background: var(--primary-50); color: var(--primary); } .si.amber { background: var(--warn-bg); color: var(--warn); }
+.si.green { background: var(--ok-bg); color: var(--ok); } .si.blue { background: var(--info-bg); color: var(--info); }
+.si.violet { background: var(--violet-bg); color: var(--violet); } .si.red { background: var(--bad-bg); color: var(--bad); }
+.action-card { display: flex; gap: 14px; align-items: center; padding: 16px; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; width: 100%; }
+.action-card:hover { border-color: var(--primary-200); box-shadow: var(--shadow); transform: translateY(-1px); }
+.action-card b { display: block; font-size: 14.5px; color: var(--navy); }
+.action-card span.d { color: var(--muted); font-size: 13px; }
+.list-item { display: flex; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); align-items: flex-start; }
+.list-item:last-child { border-bottom: 0; }
+.list-item .li-icon { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex: none; background: var(--surface-2); color: var(--navy-700); }
+.list-item.unread .li-icon { background: var(--primary-50); color: var(--primary); }
+
+/* Item / match cards */
+.item-card { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.item-card .top { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.item-card h4 { font-size: 16px; text-transform: capitalize; }
+.item-card .desc { color: var(--navy-700); font-size: 14px; }
+.meta-row { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+.meta-row span { display: inline-flex; gap: 6px; align-items: center; }
+.cat-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+.cat-icon.lost { background: var(--warn-bg); color: var(--warn); }
+.cat-icon.found { background: var(--primary-50); color: var(--primary); }
+.score { display: flex; align-items: center; gap: 10px; }
+.score .bar { flex: 1; height: 8px; border-radius: 999px; background: var(--surface-2); overflow: hidden; min-width: 80px; }
+.score .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--primary)); }
+.score b { font-family: var(--font-head); font-size: 15px; }
+.why { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; color: var(--navy-700); }
+.why b { color: var(--navy); }
+.disclaimer { font-size: 12.5px; color: var(--warn); display: flex; gap: 6px; align-items: flex-start; }
+.timeline { display: flex; align-items: center; gap: 0; margin-top: 4px; }
+.timeline .tl { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--subtle); white-space: nowrap; }
+.timeline .tl .d { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line-strong); display: grid; place-items: center; background: var(--surface); }
+.timeline .tl.done { color: var(--primary); }
+.timeline .tl.done .d { border-color: var(--primary); background: var(--primary); color: #fff; }
+.timeline .tl.now .d { box-shadow: 0 0 0 4px rgba(20, 184, 166, .18); }
+.timeline .ln { flex: 1; height: 2px; background: var(--line); margin: 0 8px; min-width: 14px; }
+.timeline .ln.done { background: var(--primary); }
+@media (max-width: 560px) { .timeline .tl span.t { display: none; } }
+.private { background: var(--warn-bg); border: 1px dashed #F59E0B; border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+.private b { color: var(--warn); }
+.answer { background: var(--info-bg); border: 1px solid var(--info-line); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+.answer b { color: var(--info); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip-btn { border: 1px solid var(--line-strong); background: var(--surface); padding: 7px 13px; border-radius: 999px; font-size: 13.5px; font-weight: 500; cursor: pointer; color: var(--navy-700); }
+.chip-btn:hover { border-color: var(--primary-200); background: var(--primary-50); color: var(--primary-700); }
+.chip-btn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; padding: 12px 16px; background: var(--surface-2); white-space: nowrap; }
+td { padding: 12px 16px; border-top: 1px solid var(--line); vertical-align: top; }
+tr:hover td { background: #FBFDFE; }
+
+/* Forms */
+.form-card { padding: 24px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.form-grid .full { grid-column: 1 / -1; }
+@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+.side-tip { padding: 20px; }
+.side-tip h4 { font-size: 15px; margin-bottom: 8px; }
+.side-tip ul { margin: 0; padding-left: 18px; color: var(--navy-700); font-size: 14px; display: grid; gap: 6px; }
+.layout-form { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 960px) { .layout-form { grid-template-columns: 1fr; } }
+
+/* =====================================================================
+   Chat
+   ===================================================================== */
+.chat { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; height: calc(100vh - 140px); min-height: 520px; overflow: hidden; }
+@media (max-width: 1024px) { .chat { height: calc(100dvh - 110px); } }
+.chat > * { min-width: 0; }
+.chat-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.chat-head > div { min-width: 0; }
+#chat-engine-line { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bot-avatar { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; flex: none;
+              background: linear-gradient(135deg, var(--primary), var(--accent)); box-shadow: 0 4px 12px rgba(15, 118, 110, .28); }
+.bot-avatar.sm { width: 30px; height: 30px; border-radius: 9px; box-shadow: none; }
+.chat-head b { display: block; font-size: 15px; }
+.chat-log { overflow-y: auto; padding: 20px 18px; background: linear-gradient(180deg, #FBFDFE, var(--bg)); scroll-behavior: smooth; }
+.msg-row { display: flex; gap: 10px; margin: 0 0 16px; align-items: flex-end; }
+.msg-row.user { justify-content: flex-end; }
+.bubble { max-width: min(680px, 82%); padding: 11px 15px; border-radius: 16px; font-size: 14.5px; line-height: 1.55; word-wrap: break-word; overflow-wrap: anywhere; }
+.msg-row.user .bubble { background: var(--navy); color: #fff; border-bottom-right-radius: 5px; white-space: pre-wrap; }
+.msg-row.bot .bubble { background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 5px; box-shadow: var(--shadow-sm); }
+.bubble p { margin: 0 0 6px; } .bubble p:last-child { margin-bottom: 0; }
+.bubble ul, .bubble ol { margin: 4px 0 8px; padding-left: 20px; } .bubble li { margin: 2px 0; }
+.bubble .gap { height: 6px; }
+.bubble code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; font-size: .9em; }
+.bubble .md-h { font-weight: 700; }
+.bubble .warn-text { color: var(--bad); }
+.msg-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.tool-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2);
+             border: 1px solid var(--line); color: var(--navy-700); }
+.tool-chip.err { color: var(--warn); border-color: var(--warn-line); background: var(--warn-bg); }
+.msg-cands { margin: -6px 0 16px 40px; display: grid; gap: 10px; max-width: min(680px, 86%); }
+.typing { display: inline-flex; gap: 4px; align-items: center; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--subtle); animation: blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.composer { border-top: 1px solid var(--line); padding: 12px 14px; background: var(--surface); }
+.suggest { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: thin; }
+.suggest .chip-btn { white-space: nowrap; }
+.compose-box { display: flex; gap: 10px; align-items: flex-end; border: 1px solid var(--line-strong); border-radius: 14px; padding: 6px 6px 6px 14px; background: var(--surface); }
+.compose-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(20, 184, 166, .15); }
+.compose-box textarea { border: 0; box-shadow: none !important; padding: 8px 0; min-height: 24px; max-height: 160px; resize: none; background: transparent; }
+.compose-box .btn { padding: 10px 14px; }
+.compose-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 11.5px; color: var(--subtle); }
+
+/* =====================================================================
+   Modal & toast
+   ===================================================================== */
+.modal-back { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); z-index: 100; display: grid; place-items: center; padding: 16px; animation: fade .15s ease; }
+.modal { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow-lg); animation: pop .18s ease; }
+.modal .mh { padding: 20px 22px 0; display: flex; gap: 14px; align-items: flex-start; }
+.modal .mh h3 { font-size: 18px; }
+.modal .mb { padding: 14px 22px; color: var(--navy-700); font-size: 14.5px; }
+.modal .mf { padding: 14px 22px 20px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.summary-list { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 10px; }
+.summary-list div { display: grid; grid-template-columns: 130px 1fr; gap: 10px; padding: 9px 14px; font-size: 14px; border-top: 1px solid var(--line); }
+.summary-list div:first-child { border-top: 0; }
+.summary-list dt { color: var(--muted); } .summary-list dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+@keyframes fade { from { opacity: 0; } } @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+.toasts { position: fixed; right: 16px; bottom: 16px; z-index: 120; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); }
+.toast { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: var(--navy); color: #fff; box-shadow: var(--shadow-lg); font-size: 14px; animation: pop .2s ease; }
+.toast.error { background: #7F1D1D; } .toast.success { background: #064E3B; } .toast.warn { background: #78350F; }
+.toast button { margin-left: auto; background: none; border: 0; color: inherit; opacity: .7; cursor: pointer; padding: 0 2px; }
+.banner { max-width: 1180px; margin: 12px auto 0; padding: 0 24px; }
+.app-banner { margin-bottom: 16px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Campus<span>Find</span> AI</h1>
-  <span id="engine" class="badge" title="">checking…</span>
-  <span class="spacer"></span>
-  <span id="who" class="muted"></span>
-  <button id="logout" class="btn secondary" hidden>Log out</button>
-</header>
 
-<main>
-  <div id="setup-error" class="error" hidden></div>
+<!-- ===================================================== Icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-logo" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8.5 11.5 10.5 13.5 14 9.5"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 13v1.5M15 13v1.5M2 13v3M22 13v3"/><circle cx="12" cy="3" r="1"/></symbol>
+    <symbol id="i-lost" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/><path d="m15.5 15.5 3 3m0-3-3 3"/></symbol>
+    <symbol id="i-found" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/><path d="m14.5 17 1.6 1.6 3-3"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 5.4-1.6M2 2l20 20M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M3 21v-5h5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 3.1a4 4 0 0 1 0 7.8M22 21a7 7 0 0 0-4-6.3"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></symbol>
+    <symbol id="i-tool" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-handshake" viewBox="0 0 24 24"><path d="m11 17 2 2a1.4 1.4 0 0 0 2-2"/><path d="m14 14 2.5 2.5a1.4 1.4 0 0 0 2-2L15 11"/><path d="m21 3-6 6-3-1-4 4 1 1M3 11l6-6 3 1"/><path d="m7 15-1 1a1.4 1.4 0 0 0 2 2l1-1"/></symbol>
+  </defs>
+</svg>
 
-  <!-- ===================== LANDING + LOGIN / REGISTER ===================== -->
-  <section id="landing" hidden>
-    <div class="hero">
-      <div>
-        <span class="badge">Government College of Engineering, Kolhapur</span>
-        <h2>Lost something on campus? Found something?</h2>
-        <p>CampusFind AI is an AI agent that takes your lost or found report in plain language, asks for missing
-          details, saves it, and searches for <b>potentially matching</b> reports. A human admin verifies every claim
-          before an item is handed over.</p>
-        <ol class="steps">
-          <li>Tell the agent what you lost or found, e.g. <i>"I lost my black HP laptop bag in CSE block yesterday"</i>.</li>
-          <li>The agent asks one question at a time, shows a summary and saves only after you say <b>yes</b>.</li>
-          <li>The matching engine scores reports by category, colour, place, time and brand.</li>
-          <li>The owner answers a private verification question. The admin verifies and marks the item returned.</li>
-        </ol>
-        <p class="muted">Runs on a free local AI model (Ollama) when available, otherwise on a rule-based engine,
-          which is clearly labelled. No paid AI API is used.</p>
+<!-- ===================================================== LANDING -->
+<div id="landing" class="landing" hidden>
+  <nav class="l-nav">
+    <a class="brand" href="#"><span class="brand-mark"><svg class="icon"><use href="#i-logo"/></svg></span><span>Campus<em>Find</em> AI</span></a>
+    <div class="links">
+      <a href="#how" class="hide-sm">How it works</a>
+      <a href="#trust" class="hide-sm">Privacy</a>
+      <a href="#auth" data-auth="login">Log in</a>
+    </div>
+  </nav>
+  <div id="landing-banner" class="banner" hidden></div>
+  <section class="hero">
+    <div>
+      <span class="eyebrow"><span class="pill">AI agent</span> Government College of Engineering, Kolhapur</span>
+      <h1>Lost something? <span class="grad">Let's find it together.</span></h1>
+      <p class="lead">Tell our AI assistant what you lost or found in your own words. It collects the details, saves your report, and searches for <b>potential matches</b>. A human admin verifies every claim before anything is handed over.</p>
+      <div class="ctas">
+        <button class="btn lg" data-cta="lost"><svg class="icon"><use href="#i-lost"/></svg> Report a lost item</button>
+        <button class="btn lg secondary" data-cta="found"><svg class="icon"><use href="#i-found"/></svg> I found something</button>
       </div>
-      <div class="card">
-        <div class="authtabs">
-          <button id="tab-login" class="active" type="button">Log in</button>
-          <button id="tab-register" type="button">Register</button>
+      <div class="trust-row">
+        <span><svg class="icon"><use href="#i-shield"/></svg> Admin-verified returns</span>
+        <span><svg class="icon"><use href="#i-lock"/></svg> Private details stay private</span>
+        <span><svg class="icon"><use href="#i-spark"/></svg> Free local AI, no paid APIs</span>
+      </div>
+    </div>
+
+    <div class="auth-card" id="auth">
+      <h2 id="auth-title">Welcome back</h2>
+      <p class="muted small" id="auth-sub">Log in with your college account to continue.</p>
+      <div class="seg" role="tablist">
+        <button type="button" id="tab-login" class="active" role="tab">Log in</button>
+        <button type="button" id="tab-register" role="tab">Create account</button>
+      </div>
+      <form id="auth-form" novalidate>
+        <div class="field" id="f-name" hidden>
+          <label for="reg-name">Full name</label>
+          <input id="reg-name" type="text" maxlength="80" autocomplete="name" placeholder="e.g. Riya Patil">
+          <span class="err">Please enter your full name (at least 2 letters).</span>
         </div>
-        <form id="auth-form">
-          <div id="name-row" hidden>
-            <label for="reg-name">Full name</label>
-            <input id="reg-name" maxlength="80" autocomplete="name">
+        <div class="field" id="f-email">
+          <label for="email">Email address</label>
+          <input id="email" type="email" autocomplete="username" placeholder="you@college.edu" required>
+          <span class="err">Please enter a valid email address.</span>
+        </div>
+        <div class="field" id="f-password">
+          <label for="password">Password</label>
+          <div class="pw-wrap">
+            <input id="password" type="password" autocomplete="current-password" required minlength="6">
+            <button type="button" class="pw-toggle" data-pw="password" aria-label="Show password"><svg class="icon"><use href="#i-eye"/></svg></button>
           </div>
-          <label for="email">College email</label>
-          <input id="email" type="email" autocomplete="username" required>
-          <label for="password">Password <span class="opt">(min 6 characters)</span></label>
-          <input id="password" type="password" minlength="6" autocomplete="current-password" required>
-          <div id="auth-msg" hidden></div>
-          <p><button class="btn" id="auth-submit" type="submit" style="width:100%">Log in</button></p>
-        </form>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===================== APP ===================== -->
-  <section id="app" hidden>
-    <nav class="tabs" id="tabs">
-      <button data-tab="chat" class="active">🤖 AI Agent</button>
-      <button data-tab="lost">Report lost</button>
-      <button data-tab="found">Report found</button>
-      <button data-tab="search">Search</button>
-      <button data-tab="matches">Matches <span id="match-count"></span></button>
-      <button data-tab="reports">My reports <span id="notif-count"></span></button>
-      <button data-tab="admin" id="admin-tab" hidden>Admin</button>
-    </nav>
-
-    <!-- chat -->
-    <div id="tab-chat">
-      <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
-        <span class="muted" id="session-label"></span>
-        <button class="btn secondary" id="new-chat">New chat</button>
-      </div>
-      <div id="chatlog"></div>
-      <div class="suggest" id="suggest">
-        <button>I lost my black HP laptop bag in CSE block yesterday</button>
-        <button>I found a blue water bottle in the library today</button>
-        <button>Has anyone found a calculator?</button>
-        <button>my reports</button>
-      </div>
-      <form id="composer">
-        <input id="message" maxlength="2000" placeholder="Type a message…" autocomplete="off">
-        <button class="btn" id="send" type="submit">Send</button>
-      </form>
-    </div>
-
-    <!-- report forms (shared template filled by JS) -->
-    <div id="tab-lost" hidden></div>
-    <div id="tab-found" hidden></div>
-
-    <!-- search -->
-    <div id="tab-search" hidden>
-      <form id="search-form" class="card">
-        <div class="grid4">
-          <div><label for="s-q">Keywords</label><input id="s-q" maxlength="200" placeholder="e.g. blue bottle"></div>
-          <div><label for="s-type">Type</label><select id="s-type"><option value="found">Found items</option><option value="lost">Lost items</option><option value="">Both</option></select></div>
-          <div><label for="s-cat">Category</label><select id="s-cat" data-cats><option value="">Any</option></select></div>
-          <div><label for="s-loc">Location</label><select id="s-loc" data-locs><option value="">Any</option></select></div>
+          <span class="err" id="pw-err">Please enter your password.</span>
+          <span class="hint" id="pw-hint" hidden>At least 8 characters, with letters and numbers.</span>
         </div>
-        <p><button class="btn" type="submit">Search</button></p>
+        <div class="field" id="f-password2" hidden>
+          <label for="password2">Confirm password</label>
+          <div class="pw-wrap">
+            <input id="password2" type="password" autocomplete="new-password">
+            <button type="button" class="pw-toggle" data-pw="password2" aria-label="Show password"><svg class="icon"><use href="#i-eye"/></svg></button>
+          </div>
+          <span class="err">Passwords don't match.</span>
+        </div>
+        <div id="auth-msg" hidden></div>
+        <button class="btn lg block" id="auth-submit" type="submit">Log in</button>
       </form>
-      <div id="search-results"></div>
-    </div>
-
-    <!-- matches -->
-    <div id="tab-matches" hidden>
-      <div class="info">A candidate is <b>not</b> a confirmed match. Answer the verification question; an admin then compares
-        your answer with the finder's private note before anything is handed over.</div>
-      <div id="matches-list"></div>
-    </div>
-
-    <!-- my reports -->
-    <div id="tab-reports" hidden>
-      <h3>Notifications</h3>
-      <div id="notif-list"></div>
-      <h3>My reports</h3>
-      <div class="tablewrap"><table id="reports-table"></table></div>
-    </div>
-
-    <!-- admin -->
-    <div id="tab-admin" hidden>
-      <div class="grid4" id="admin-stats"></div>
-      <h3>Verification queue</h3>
-      <div class="row">
-        <select id="admin-status" style="width:auto">
-          <option value="owner_confirmed">Waiting for verification</option>
-          <option value="verified">Verified: ready to hand over</option>
-          <option value="candidate">Candidates (owner not answered yet)</option>
-          <option value="closed">Closed (returned)</option>
-          <option value="rejected">Rejected</option>
-        </select>
-        <button class="btn secondary" id="admin-refresh">Refresh</button>
+      <div id="confirm-panel" hidden>
+        <div class="alert success"><svg class="icon"><use href="#i-mail"/></svg>
+          <div><b>Check your email</b><br>We sent a confirmation link to <b id="confirm-email"></b>. Open it to activate your account, then log in here.</div></div>
+        <p class="small muted mt-sm">Didn't get it? Check your spam folder, or resend the email.</p>
+        <div class="row mt-sm">
+          <button class="btn secondary sm" id="resend-btn" type="button">Resend email</button>
+          <button class="btn ghost sm" id="back-login" type="button">Back to log in</button>
+        </div>
+        <div id="resend-msg" class="mt-sm" hidden></div>
       </div>
-      <div id="admin-list"></div>
-      <h3>All reports</h3>
-      <div class="tablewrap"><table id="admin-items"></table></div>
+      <p class="auth-foot">New students are registered as <b>students</b>. Admin access is granted only by the college office.</p>
     </div>
   </section>
-</main>
+
+  <section class="section" id="how">
+    <div class="section-head">
+      <span class="kicker">How it works</span>
+      <h2>From "I lost it" to "got it back"</h2>
+      <p>The AI does the paperwork and the searching. People make the final decision.</p>
+    </div>
+    <div class="grid g4">
+      <div class="card step-card"><span class="step-num">01</span><div class="feature-icon"><svg class="icon lg"><use href="#i-bot"/></svg></div>
+        <h3>Tell the assistant</h3><p>"I lost my black HP laptop bag in CSE block yesterday." It asks one short question at a time for anything missing.</p></div>
+      <div class="card step-card"><span class="step-num">02</span><div class="feature-icon"><svg class="icon lg"><use href="#i-check"/></svg></div>
+        <h3>Confirm the summary</h3><p>You see exactly what will be saved. Nothing is saved until you reply <b>yes</b>.</p></div>
+      <div class="card step-card"><span class="step-num">03</span><div class="feature-icon"><svg class="icon lg"><use href="#i-spark"/></svg></div>
+        <h3>Smart matching</h3><p>A transparent scoring engine compares category, colour, place, time and brand, and shows <b>potential</b> matches with reasons.</p></div>
+      <div class="card step-card"><span class="step-num">04</span><div class="feature-icon"><svg class="icon lg"><use href="#i-shield"/></svg></div>
+        <h3>Verified hand-over</h3><p>The owner answers a private question. An admin compares it with the finder's hidden detail, then marks the item returned.</p></div>
+    </div>
+  </section>
+
+  <section class="trust-band" id="trust">
+    <div class="section">
+      <div class="section-head">
+        <span class="kicker">Trust & privacy</span>
+        <h2>Built so the wrong person can't walk away with your things</h2>
+        <p>Every safety rule is enforced on the server, whatever the AI says.</p>
+      </div>
+      <div class="grid g3">
+        <div class="trust-card"><div class="feature-icon"><svg class="icon lg"><use href="#i-lock"/></svg></div>
+          <h3>Private details stay hidden</h3><p>The finder's secret detail is visible only to admins. Search results never show names, emails or phone numbers, and long numbers are masked automatically.</p></div>
+        <div class="trust-card"><div class="feature-icon"><svg class="icon lg"><use href="#i-users"/></svg></div>
+          <h3>Humans verify, not the AI</h3><p>A match is never treated as certain. Only an admin can verify ownership or mark an item returned. The AI has no button for that.</p></div>
+        <div class="trust-card"><div class="feature-icon"><svg class="icon lg"><use href="#i-bot"/></svg></div>
+          <h3>Honest about its AI</h3><p>Runs on a free local language model (Ollama) or a clearly labelled rule-based engine. Every reply shows which engine wrote it.</p></div>
+      </div>
+    </div>
+  </section>
+  <footer class="l-footer">CampusFind AI · Campus Lost & Found · Government College of Engineering, Kolhapur</footer>
+</div>
+
+<!-- ===================================================== APP -->
+<div id="app" class="shell" hidden>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <a class="brand" href="#/dashboard"><span class="brand-mark"><svg class="icon"><use href="#i-logo"/></svg></span><span>Campus<em>Find</em> AI</span></a>
+    <div class="nav-label">Menu</div>
+    <button class="nav-item" data-view="dashboard"><svg class="icon"><use href="#i-home"/></svg> Dashboard</button>
+    <button class="nav-item" data-view="chat"><svg class="icon"><use href="#i-bot"/></svg> AI Assistant</button>
+    <button class="nav-item" data-view="lost"><svg class="icon"><use href="#i-lost"/></svg> Report lost</button>
+    <button class="nav-item" data-view="found"><svg class="icon"><use href="#i-found"/></svg> Report found</button>
+    <button class="nav-item" data-view="search"><svg class="icon"><use href="#i-search"/></svg> Search items</button>
+    <button class="nav-item" data-view="matches"><svg class="icon"><use href="#i-spark"/></svg> Potential matches <span class="count" id="nav-match-count" hidden></span></button>
+    <button class="nav-item" data-view="reports"><svg class="icon"><use href="#i-file"/></svg> My reports</button>
+    <div id="admin-nav" hidden>
+      <div class="nav-label">Administration</div>
+      <button class="nav-item" data-view="admin"><svg class="icon"><use href="#i-shield"/></svg> Admin dashboard <span class="count" id="nav-admin-count" hidden></span></button>
+    </div>
+    <div class="sidebar-foot">
+      <div class="engine-card">
+        <div class="t"><span class="status-dot" id="side-dot"></span><span id="side-engine">Checking engine…</span></div>
+        <div class="s" id="side-engine-sub">Which engine answers the chat</div>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" id="menu-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"/></svg></button>
+      <div>
+        <h1 id="page-title">Dashboard</h1>
+        <div class="sub" id="page-sub"></div>
+      </div>
+      <div class="right">
+        <span class="engine-pill" id="engine-pill" title=""><span class="status-dot" id="pill-dot"></span><span class="txt" id="pill-text">Checking…</span></span>
+        <div class="rel">
+          <button class="icon-btn" id="bell" aria-label="Notifications"><svg class="icon"><use href="#i-bell"/></svg><span class="count" id="bell-count" hidden></span></button>
+          <div class="popover" id="notif-pop" hidden>
+            <div class="ph">Notifications <button class="btn ghost sm" data-go="reports">View all</button></div>
+            <div class="pl" id="notif-pop-list"></div>
+          </div>
+        </div>
+        <div class="rel">
+          <button class="user-chip" id="user-chip" aria-label="Account">
+            <span class="avatar" id="avatar">?</span>
+            <span class="meta"><b id="user-name"></b><small id="user-role"></small></span>
+          </button>
+          <div class="popover" id="user-pop" hidden style="width:240px">
+            <div class="pi"><b id="pop-name"></b><div class="muted small" id="pop-email"></div></div>
+            <div class="pi"><button class="btn ghost sm block" id="logout" style="justify-content:flex-start"><svg class="icon"><use href="#i-logout"/></svg> Log out</button></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <div id="app-banner" class="app-banner" hidden></div>
+
+      <!-- Dashboard -->
+      <section data-page="dashboard" hidden>
+        <div class="welcome">
+          <h2 id="welcome-title">Welcome back</h2>
+          <p>Report a lost or found item, chat with the AI assistant, or follow up on potential matches. Your reports and matches below come straight from the database.</p>
+          <div class="row">
+            <button class="btn" data-go="chat"><svg class="icon"><use href="#i-bot"/></svg> Ask the AI assistant</button>
+            <button class="btn secondary" data-go="lost">Report lost item</button>
+            <button class="btn secondary" data-go="found">Report found item</button>
+          </div>
+        </div>
+        <div class="grid g4 mt" id="dash-stats"></div>
+        <div class="grid g3 mt">
+          <div class="card span2">
+            <div class="card-head"><h3>Potential matches</h3><button class="btn ghost sm" data-go="matches">View all <svg class="icon sm"><use href="#i-arrow"/></svg></button></div>
+            <div id="dash-matches"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Recent activity</h3></div>
+            <div id="dash-activity"></div>
+          </div>
+        </div>
+        <div class="grid g4 mt">
+          <button class="card action-card" data-go="chat"><span class="cat-icon found"><svg class="icon"><use href="#i-bot"/></svg></span><span><b>AI Assistant</b><span class="d">Report by chatting</span></span></button>
+          <button class="card action-card" data-go="lost"><span class="cat-icon lost"><svg class="icon"><use href="#i-lost"/></svg></span><span><b>Report lost</b><span class="d">Use the quick form</span></span></button>
+          <button class="card action-card" data-go="found"><span class="cat-icon found"><svg class="icon"><use href="#i-found"/></svg></span><span><b>Report found</b><span class="d">Help an owner</span></span></button>
+          <button class="card action-card" data-go="search"><span class="cat-icon" style="background:var(--info-bg);color:var(--info)"><svg class="icon"><use href="#i-search"/></svg></span><span><b>Search</b><span class="d">Browse open reports</span></span></button>
+        </div>
+      </section>
+
+      <!-- Chat -->
+      <section data-page="chat" hidden>
+        <div class="card chat">
+          <div class="chat-head">
+            <span class="bot-avatar"><svg class="icon lg"><use href="#i-bot"/></svg></span>
+            <div><b>CampusFind Assistant</b><span class="small muted" id="chat-engine-line">Checking engine…</span></div>
+            <div class="row" style="margin-left:auto">
+              <button class="btn secondary sm" id="new-chat"><svg class="icon sm"><use href="#i-plus"/></svg> New chat</button>
+            </div>
+          </div>
+          <div class="chat-log" id="chatlog" aria-live="polite"></div>
+          <div class="composer">
+            <div class="suggest" id="suggest">
+              <button class="chip-btn">I lost my black HP laptop bag in CSE block yesterday</button>
+              <button class="chip-btn">I found a blue water bottle in the library today</button>
+              <button class="chip-btn">Has anyone found a calculator?</button>
+              <button class="chip-btn">Show my reports</button>
+            </div>
+            <form class="compose-box" id="composer">
+              <textarea id="message" rows="1" maxlength="2000" placeholder="Describe what you lost or found…" aria-label="Message"></textarea>
+              <button class="btn" id="send" type="submit" aria-label="Send"><svg class="icon"><use href="#i-send"/></svg></button>
+            </form>
+            <div class="compose-foot"><span>Enter to send · Shift+Enter for a new line</span><span id="char-count">0 / 2000</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Report forms (filled by JS) -->
+      <section data-page="lost" hidden></section>
+      <section data-page="found" hidden></section>
+
+      <!-- Search -->
+      <section data-page="search" hidden>
+        <form class="card pad" id="search-form">
+          <div class="grid g4">
+            <div class="field span2"><label for="s-q">Keywords</label><input id="s-q" type="search" maxlength="200" placeholder="e.g. blue bottle, HP, keychain"></div>
+            <div class="field"><label for="s-type">Type</label><select id="s-type"><option value="found">Found items</option><option value="lost">Lost items</option><option value="">Lost & found</option></select></div>
+            <div class="field"><label for="s-cat">Category</label><select id="s-cat" data-cats><option value="">Any category</option></select></div>
+            <div class="field"><label for="s-loc">Location</label><select id="s-loc" data-locs><option value="">Anywhere on campus</option></select></div>
+            <div class="field"><label for="s-from">From date</label><input id="s-from" type="date"></div>
+            <div class="field"><label for="s-to">To date</label><input id="s-to" type="date"></div>
+            <div class="field" style="justify-content:flex-end"><button class="btn" type="submit" id="search-btn"><svg class="icon"><use href="#i-search"/></svg> Search</button></div>
+          </div>
+        </form>
+        <div class="alert info mt"><svg class="icon"><use href="#i-info"/></svg><div>Search shows open reports. Search results are <b>not</b> matches. Report your lost item to get scored candidates.</div></div>
+        <div id="search-results" class="mt"></div>
+      </section>
+
+      <!-- Matches -->
+      <section data-page="matches" hidden>
+        <div class="alert warn"><svg class="icon"><use href="#i-alert"/></svg><div>A candidate is <b>not</b> a confirmed match. If one might be yours, answer the verification question. An admin compares your answer with the finder's private note before anything is handed over.</div></div>
+        <div class="chips mt" id="match-filters">
+          <button class="chip-btn active" data-f="all">All</button>
+          <button class="chip-btn" data-f="candidate">Needs your answer</button>
+          <button class="chip-btn" data-f="progress">With admin</button>
+          <button class="chip-btn" data-f="closed">Returned</button>
+        </div>
+        <div id="matches-list" class="grid g2 mt"></div>
+      </section>
+
+      <!-- My reports -->
+      <section data-page="reports" hidden>
+        <div class="grid g3">
+          <div class="span2">
+            <div class="row between"><h3>My reports</h3>
+              <div class="chips" id="report-filters">
+                <button class="chip-btn active" data-f="all">All</button><button class="chip-btn" data-f="lost">Lost</button><button class="chip-btn" data-f="found">Found</button>
+              </div></div>
+            <div id="reports-list" class="stack mt"></div>
+          </div>
+          <div>
+            <div class="card">
+              <div class="card-head"><h3>Notifications</h3><span class="badge teal" id="unread-badge" hidden></span></div>
+              <div id="notif-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Admin -->
+      <section data-page="admin" hidden>
+        <div class="grid g4" id="admin-stats"></div>
+        <div class="card mt">
+          <div class="card-head">
+            <h3>Verification queue</h3>
+            <button class="btn secondary sm" id="admin-refresh"><svg class="icon sm"><use href="#i-refresh"/></svg> Refresh</button>
+          </div>
+          <div class="card-body">
+            <div class="chips" id="queue-tabs">
+              <button class="chip-btn active" data-s="owner_confirmed">Pending claims</button>
+              <button class="chip-btn" data-s="verified">Verified: ready to hand over</button>
+              <button class="chip-btn" data-s="candidate">Candidates (no owner answer yet)</button>
+              <button class="chip-btn" data-s="closed">Returned</button>
+              <button class="chip-btn" data-s="rejected">Rejected</button>
+            </div>
+            <div id="admin-list" class="stack mt"></div>
+          </div>
+        </div>
+        <div class="card mt">
+          <div class="card-head">
+            <h3>All reports</h3>
+            <div class="row">
+              <input id="admin-filter" type="search" placeholder="Filter by code, item, place…" style="width:min(220px,100%);min-height:36px;padding:7px 10px">
+              <select id="admin-item-status" style="width:auto;min-height:36px;padding:7px 10px">
+                <option value="">All statuses</option><option value="open">Open</option><option value="matched">Matched</option>
+                <option value="verified">Verified</option><option value="returned">Returned</option><option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap"><table id="admin-items"></table></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="assertive"></div>
 
 <script>
 "use strict";
+/* =====================================================================
+   Helpers
+   ===================================================================== */
 const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const icon = (name, cls = "") => `<svg class="icon ${cls}"><use href="#i-${name}"/></svg>`;
 const todayIso = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
-let sb = null, me = null, sessionId = null, meta = { locations: [], categories: [] }, authMode = "login";
+const pretty = (s) => String(s || "").replaceAll("_", " ");
+const cap = (s) => { s = pretty(s); return s ? s[0].toUpperCase() + s.slice(1) : s; };
+const CAT_LABELS = { id_card: "ID card", jewellery: "Jewellery", electronics: "Electronics" };
+const catLabel = (c) => CAT_LABELS[c] || cap(c);
+const what = (r) => [r.color, r.brand && !String(r.item_name || "").toLowerCase().includes(String(r.brand).toLowerCase()) ? r.brand : null, r.item_name].filter(Boolean).join(" ") || "item";
+const fmtDate = (iso) => { if (!iso) return ""; const d = new Date(iso + (iso.length === 10 ? "T00:00:00" : "")); return isNaN(d) ? iso : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }); };
+const fmtWhen = (iso) => { const d = new Date(iso); if (isNaN(d)) return ""; const s = (Date.now() - d) / 1000;
+  if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago"; if (s < 86400) return Math.floor(s / 3600) + " h ago";
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }); };
 
-function showError(text) { const e = $("setup-error"); e.textContent = text || ""; e.hidden = !text; }
-function note(el, kind, html) { el.className = kind; el.innerHTML = html; el.hidden = false; }
-function loading(el, text = "Loading…") { el.innerHTML = `<p class="muted"><span class="spinner"></span> ${esc(text)}</p>`; }
+let sb = null, me = null, sessionId = null, meta = { locations: [], categories: [] }, health = null;
+let authMode = "login", pendingView = null, entering = false, currentView = null;
+let cache = { reports: [], matches: [], notifications: [], unread: 0 };
 
-async function api(path, opts = {}) {
-  const { data } = await sb.auth.getSession();
-  const token = data.session?.access_token;
-  const res = await fetch(path, { ...opts, headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) } });
-  let body = null;
-  try { body = await res.json(); } catch { /* empty */ }
-  if (res.status === 401) { await sb.auth.signOut(); throw new Error(body?.detail || "Please log in again."); }
-  if (!res.ok) {
-    let msg = body?.detail;
-    if (Array.isArray(msg)) msg = msg.map((d) => (d.loc ? d.loc.slice(-1)[0] + ": " : "") + d.msg).join("; ");
-    if (res.status === 503 && body?.setup) msg += " Setup: " + body.setup.join(" ");
-    const err = new Error(msg || "Request failed (" + res.status + ")"); err.status = res.status; err.body = body; throw err;
-  }
-  return body;
-}
-const statusPill = (s) => `<span class="status st-${esc(s)}">${esc(String(s).replaceAll("_", " "))}</span>`;
-const what = (r) => [r.color, r.brand, r.item_name].filter(Boolean).join(" ");
+/* Friendly messages: users never see stack traces, SQL or raw exception text. */
+const MSG = {
+  offline: "Unable to connect to the server. Please check your internet connection and try again.",
+  timeout: "The server is taking too long to respond. Please try again.",
+  session: "Your session has expired. Please log in again.",
+  rate: "Too many requests. Please try again shortly.",
+  server: "Something went wrong on our side. Please try again.",
+  db: "The database is temporarily unavailable. Please try again shortly.",
+  forbidden: "You don't have permission to do that.",
+};
 
-// ------------------------------------------------------------ boot / auth
-async function loadHealth() {
+class ApiError extends Error { constructor(msg, status, body) { super(msg); this.status = status; this.body = body; } }
+
+async function api(path, { method = "GET", body, timeout = 30000 } = {}) {
+  let token = null;
+  try { token = (await sb.auth.getSession()).data.session?.access_token; } catch { /* treated as logged out */ }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
+  let res;
   try {
-    const h = await (await fetch("/api/health")).json();
-    const b = $("engine");
-    if (h.chat_engine === "llm") { b.className = "badge llm"; b.textContent = "AI engine: local LLM (" + h.ollama.model + ")"; }
-    else if (h.chat_engine === "rules") { b.className = "badge rules"; b.textContent = "AI engine: rule-based mode (no LLM)"; }
-    else { b.className = "badge bad"; b.textContent = "LLM unavailable"; }
-    b.title = h.ollama.reason;
-    if (h.database !== "ok") showError("Database: " + h.database + ". See README → Supabase setup.");
-  } catch { $("engine").textContent = "API offline"; }
+    res = await fetch(path, { method, signal: ctrl.signal, body: body === undefined ? undefined : JSON.stringify(body),
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) } });
+  } catch (e) {
+    throw new ApiError(e.name === "AbortError" ? MSG.timeout : MSG.offline, 0);
+  } finally { clearTimeout(timer); }
+  let data = null;
+  try { data = await res.json(); } catch { /* empty body */ }
+  if (res.ok) return data;
+  let msg = typeof data?.detail === "string" ? data.detail : null;
+  if (res.status === 401) { msg = MSG.session; setTimeout(() => sessionExpired(), 0); }
+  else if (res.status === 403) msg = msg || MSG.forbidden;
+  else if (res.status === 429) { const ra = res.headers.get("Retry-After"); msg = MSG.rate + (ra ? ` (about ${ra} s)` : ""); }
+  else if (res.status === 422) msg = Array.isArray(data?.detail) ? "Please check the highlighted details: " + data.detail.map((d) => pretty(d.loc?.slice(-1)[0]) + " " + d.msg.toLowerCase()).join("; ") : (msg || "Please check the details you entered.");
+  else if (res.status === 503) msg = data?.setup ? "The database isn't configured yet. Ask the project admin to finish the Supabase setup." : (msg || MSG.db);
+  else if (res.status >= 500) msg = MSG.server;
+  throw new ApiError(msg || MSG.server, res.status, data);
 }
 
+function toast(text, kind = "info", ms = 4500) {
+  const t = document.createElement("div"); t.className = "toast " + kind;
+  t.innerHTML = `${icon(kind === "error" ? "alert" : kind === "success" ? "check" : "info")}<span>${esc(text)}</span><button aria-label="Dismiss">${icon("x", "sm")}</button>`;
+  t.querySelector("button").onclick = () => t.remove();
+  $("toasts").appendChild(t); setTimeout(() => t.remove(), ms);
+}
+function alertBox(kind, html) { const ic = { error: "alert", success: "check", warn: "alert", info: "info" }[kind] || "info"; return `<div class="alert ${kind}">${icon(ic)}<div>${html}</div></div>`; }
+function setMsg(el, kind, html) { el.innerHTML = alertBox(kind, html); el.hidden = false; }
+function empty(ic, title, text, action = "") { return `<div class="empty"><div class="empty-icon">${icon(ic, "lg")}</div><h4>${esc(title)}</h4><p>${text}</p>${action}</div>`; }
+function skeleton(n = 3, h = 86) { return Array.from({ length: n }, () => `<div class="skeleton" style="height:${h}px;margin-bottom:12px"></div>`).join(""); }
+function busy(btn, on, label) { if (!btn) return; if (on) { btn.dataset.html = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>${label ? " " + esc(label) : ""}`; }
+  else { btn.disabled = false; if (btn.dataset.html) btn.innerHTML = btn.dataset.html; } }
+
+/* Modal dialog: confirm(...) resolves true/false; also used for forms inside. */
+function modal({ title, body = "", confirm = "Confirm", cancel = "Cancel", tone = "primary", ic = "info", onConfirm }) {
+  return new Promise((resolve) => {
+    const back = document.createElement("div"); back.className = "modal-back";
+    const toneCls = tone === "danger" ? "danger-solid" : "";
+    const iconCls = tone === "danger" ? "red" : tone === "warn" ? "amber" : "teal";
+    back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+      <div class="mh"><span class="si ${iconCls}">${icon(ic)}</span><div><h3>${esc(title)}</h3></div></div>
+      <div class="mb">${body}<div class="m-err mt-sm" hidden></div></div>
+      <div class="mf"><button class="btn secondary" data-m="cancel">${esc(cancel)}</button><button class="btn ${toneCls}" data-m="ok">${esc(confirm)}</button></div></div>`;
+    const close = (v) => { back.remove(); document.removeEventListener("keydown", onKey); resolve(v); };
+    const onKey = (e) => { if (e.key === "Escape") close(false); };
+    document.addEventListener("keydown", onKey);
+    back.addEventListener("click", (e) => { if (e.target === back) close(false); });
+    back.querySelector('[data-m="cancel"]').onclick = () => close(false);
+    const ok = back.querySelector('[data-m="ok"]');
+    ok.onclick = async () => {
+      if (!onConfirm) return close(true);
+      const err = back.querySelector(".m-err"); err.hidden = true;
+      busy(ok, true, "Working…"); back.querySelector('[data-m="cancel"]').disabled = true;
+      try { const r = await onConfirm(back); close(r === undefined ? true : r); }
+      catch (e) { busy(ok, false); back.querySelector('[data-m="cancel"]').disabled = false; setMsg(err, "error", esc(e.message)); }
+    };
+    document.body.appendChild(back);
+    (back.querySelector("textarea, input") || ok).focus();
+  });
+}
+
+/* Tiny safe Markdown: escape FIRST, then allow bold / italics / code / lists / report codes. */
+function inlineMd(s) {
+  return s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[\s(])\*(?!\s)([^*]+?)\*(?=[\s).,!?]|$)/g, "$1<em>$2</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\b([LF]-\d{4})\b/g, '<span class="code-pill">$1</span>');
+}
+function md(text) {
+  let html = "", list = null;
+  for (const raw of esc(text).split("\n")) {
+    const line = raw.trimEnd();
+    const m = line.match(/^\s*(?:[-*•]|(\d+)[.)])\s+(.*)$/);
+    if (m) { const type = m[1] ? "ol" : "ul"; if (list !== type) { if (list) html += `</${list}>`; html += `<${type}>`; list = type; } html += `<li>${inlineMd(m[2])}</li>`; continue; }
+    if (list) { html += `</${list}>`; list = null; }
+    if (!line.trim()) { html += '<div class="gap"></div>'; continue; }
+    const h = line.match(/^#{1,4}\s+(.*)$/);
+    html += h ? `<p class="md-h">${inlineMd(h[1])}</p>` : `<p>${inlineMd(line)}</p>`;
+  }
+  return list ? html + `</${list}>` : html;
+}
+
+/* =====================================================================
+   Status badges + timelines
+   ===================================================================== */
+const STATUS = {
+  open: ["Open", "blue"], matched: ["Potential match", "amber"], verified: ["Verified", "teal"], returned: ["Returned", "green"],
+  cancelled: ["Cancelled", "red"], closed: ["Closed", "green"], candidate: ["Candidate", "amber"], owner_confirmed: ["Owner answered", "violet"],
+  rejected: ["Rejected", "red"],
+};
+const statusBadge = (s) => { const [l, c] = STATUS[s] || [cap(s), ""]; return `<span class="badge ${c}"><span class="dot"></span>${esc(l)}</span>`; };
+function timeline(steps, idx) {
+  return `<div class="timeline">${steps.map((label, i) => `${i ? `<span class="ln ${i <= idx ? "done" : ""}"></span>` : ""}
+    <span class="tl ${i <= idx ? "done" : ""} ${i === idx ? "now" : ""}"><span class="d">${i <= idx ? icon("check", "sm") : ""}</span><span class="t">${esc(label)}</span></span>`).join("")}</div>`;
+}
+const MATCH_STEPS = ["Candidate", "Owner answered", "Admin verified", "Returned"];
+const matchIdx = (s) => ({ candidate: 0, owner_confirmed: 1, verified: 2, closed: 3 }[s] ?? 0);
+const ITEM_STEPS = ["Reported", "Potential match", "Verified", "Returned"];
+const itemIdx = (s) => ({ open: 0, matched: 1, verified: 2, returned: 3, closed: 3 }[s] ?? 0);
+const scoreBar = (v) => `<div class="score"><div class="bar"><i style="width:${Math.round(Math.min(1, v) * 100)}%"></i></div><b>${Math.round(v * 100)}%</b></div>`;
+
+/* =====================================================================
+   Engine status (from /api/health; never guessed)
+   ===================================================================== */
+function engineInfo(h) {
+  if (!h) return { cls: "bad", label: "Server offline", sub: "Can't reach the API" };
+  if (h.chat_engine === "llm") return { cls: "llm", label: "Local LLM — Ollama", sub: `Model ${h.ollama.model}, running on this computer` };
+  if (h.chat_engine === "rules") return { cls: "rules", label: "Rule-based engine", sub: h.llm_provider === "rules" ? "Deterministic rules (no LLM in this deployment)" : "Local LLM not available, so fixed rules are used" };
+  return { cls: "bad", label: "AI engine unavailable", sub: h.ollama?.reason || "" };
+}
+async function loadHealth() {
+  try { const r = await fetch("/api/health"); health = await r.json(); } catch { health = null; }
+  const e = engineInfo(health);
+  ["side-dot", "pill-dot"].forEach((id) => { $(id).className = "status-dot " + e.cls; });
+  $("side-engine").textContent = e.label; $("side-engine-sub").textContent = e.sub; $("pill-text").textContent = e.label;
+  $("engine-pill").title = e.sub; $("chat-engine-line").textContent = e.label + " · " + e.sub;
+  if (health && health.database !== "ok") banner("warn", "The database isn't reachable right now (" + esc(String(health.database).split(":")[0]) + "). Some features won't work until it's back.");
+  return health;
+}
+function banner(kind, html) {
+  const el = me ? $("app-banner") : $("landing-banner");
+  if (!html) { el.hidden = true; return; }
+  el.innerHTML = alertBox(kind, html); el.hidden = false;
+}
+
+/* =====================================================================
+   Boot + authentication
+   ===================================================================== */
 async function boot() {
   loadHealth();
-  meta = await (await fetch("/api/locations")).json();
+  try { meta = await (await fetch("/api/locations")).json(); }
+  catch { banner("error", MSG.offline); }
   fillSelects(); buildForm("lost"); buildForm("found");
-  const cfg = await (await fetch("/api/public-config")).json();
-  if (!cfg.supabase_url || !cfg.supabase_publishable_key) {
+  let cfg = {};
+  try { cfg = await (await fetch("/api/public-config")).json(); } catch { /* handled below */ }
+  if (!cfg.supabase_url || !cfg.supabase_publishable_key || !window.supabase) {
     showLanding();
-    showError("Login is not configured: set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in apps/api/.env and restart the server.");
+    banner("error", window.supabase ? "Login is not configured yet: the admin must set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY on the server."
+                                    : "Couldn't load the login library. Check your internet connection and reload the page.");
     $("auth-submit").disabled = true; return;
   }
   sb = supabase.createClient(cfg.supabase_url, cfg.supabase_publishable_key);
-  sb.auth.onAuthStateChange((_e, session) => { if (!session) showLanding(); });
+  // Email-confirmation links come back with an error in the URL when they are expired or reused.
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if (hash.get("error_description")) { showLanding(); setAuthMode("login"); setMsg($("auth-msg"), "error", esc(hash.get("error_description")) + ". Please request a new confirmation email by registering again or logging in."); history.replaceState(null, "", location.pathname); }
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT" || !session) { if (me) showLanding(); return; }
+    if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && !me) enterApp();
+  });
   const { data } = await sb.auth.getSession();
-  data.session ? enterApp() : showLanding();
+  if (!data.session) showLanding();
 }
 
-function showLanding() { me = null; $("app").hidden = true; $("landing").hidden = false; $("logout").hidden = true; $("who").textContent = ""; }
+function showLanding() {
+  me = null; $("app").hidden = true; $("landing").hidden = false; document.title = "CampusFind AI · Campus Lost & Found";
+}
+function sessionExpired() { if (!me) return; toast(MSG.session, "warn"); sb.auth.signOut().catch(() => {}); showLanding(); }
 
 function setAuthMode(mode) {
-  authMode = mode;
-  $("tab-login").classList.toggle("active", mode === "login"); $("tab-register").classList.toggle("active", mode === "register");
-  $("name-row").hidden = mode !== "register"; $("auth-submit").textContent = mode === "login" ? "Log in" : "Create account";
-  $("password").autocomplete = mode === "login" ? "current-password" : "new-password"; $("auth-msg").hidden = true;
+  authMode = mode; const reg = mode === "register";
+  $("tab-login").classList.toggle("active", !reg); $("tab-register").classList.toggle("active", reg);
+  $("f-name").hidden = !reg; $("f-password2").hidden = !reg; $("pw-hint").hidden = !reg;
+  $("auth-title").textContent = reg ? "Create your account" : "Welcome back";
+  $("auth-sub").textContent = reg ? "Students register with their email. You'll confirm it from your inbox." : "Log in with your college account to continue.";
+  $("auth-submit").textContent = reg ? "Create account" : "Log in";
+  $("password").autocomplete = reg ? "new-password" : "current-password";
+  $("auth-msg").hidden = true; $("auth-form").hidden = false; $("confirm-panel").hidden = true;
+  $$(".auth-card .field").forEach((f) => f.classList.remove("invalid"));
 }
 $("tab-login").onclick = () => setAuthMode("login");
 $("tab-register").onclick = () => setAuthMode("register");
+$$("[data-auth]").forEach((a) => a.addEventListener("click", () => setAuthMode(a.dataset.auth)));
+$$(".pw-toggle").forEach((b) => b.addEventListener("click", () => {
+  const input = $(b.dataset.pw), show = input.type === "password";
+  input.type = show ? "text" : "password"; b.innerHTML = icon(show ? "eye-off" : "eye"); b.setAttribute("aria-label", show ? "Hide password" : "Show password");
+}));
+$$("[data-cta]").forEach((b) => b.addEventListener("click", () => {
+  pendingView = b.dataset.cta;
+  if (me) return go(pendingView);
+  setAuthMode("login"); $("auth").scrollIntoView({ behavior: "smooth", block: "center" });
+  setMsg($("auth-msg"), "info", "Log in or create an account first. We'll take you straight to the " + (pendingView === "lost" ? "lost" : "found") + " item form.");
+  $("email").focus();
+}));
 
+function authMessage(err) {
+  const m = String(err?.message || err || "").toLowerCase();
+  if (m.includes("invalid login credentials")) return "Incorrect email or password. Please try again.";
+  if (m.includes("email not confirmed")) return "Please confirm your email first: open the link we sent to your inbox (check spam too).";
+  if (m.includes("already registered") || m.includes("already been registered") || m.includes("already exists")) return "An account with this email already exists. Please log in instead.";
+  if (m.includes("rate limit") || m.includes("too many") || err?.status === 429) return "Too many attempts. Please wait a few minutes and try again.";
+  if (m.includes("password") && (m.includes("at least") || m.includes("weak") || m.includes("short"))) return "Please choose a stronger password (at least 8 characters with letters and numbers).";
+  if (m.includes("email") && (m.includes("invalid") || m.includes("valid"))) return "Please enter a valid email address.";
+  if (m.includes("signups not allowed") || m.includes("signup") && m.includes("disabled")) return "New registrations are currently turned off. Please contact the college admin office.";
+  if (m.includes("sending") && m.includes("email")) return "We couldn't send the confirmation email right now. Please try again later.";
+  if (m.includes("fetch") || m.includes("network")) return MSG.offline;
+  return "Something went wrong. Please try again.";
+}
+
+const failedLogins = [];
+function loginCooldown() {
+  const now = Date.now(); while (failedLogins.length && now - failedLogins[0] > 60000) failedLogins.shift();
+  return failedLogins.length >= 5 ? Math.ceil((60000 - (now - failedLogins[0])) / 1000) : 0;
+}
+function validateAuth() {
+  const reg = authMode === "register"; let ok = true;
+  const mark = (id, bad) => { $(id).classList.toggle("invalid", bad); if (bad) ok = false; };
+  const email = $("email").value.trim(), pw = $("password").value;
+  mark("f-email", !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email));
+  if (reg) {
+    mark("f-name", $("reg-name").value.trim().length < 2);
+    const strong = pw.length >= 8 && /[a-z]/i.test(pw) && /\d/.test(pw);
+    $("pw-err").textContent = "Use at least 8 characters, including letters and numbers.";
+    mark("f-password", !strong);
+    mark("f-password2", $("password2").value !== pw);
+  } else { $("pw-err").textContent = "Please enter your password."; mark("f-password", pw.length < 1); }
+  return ok;
+}
 $("auth-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const msg = $("auth-msg"), btn = $("auth-submit"); btn.disabled = true;
+  const msg = $("auth-msg"), btn = $("auth-submit"); msg.hidden = true;
+  if (!validateAuth()) return;
+  const wait = loginCooldown();
+  if (authMode === "login" && wait) { setMsg(msg, "warn", `Too many failed attempts. Please wait ${wait} seconds and try again.`); return; }
   const email = $("email").value.trim(), password = $("password").value;
+  busy(btn, true, authMode === "login" ? "Logging in…" : "Creating account…");
   try {
     if (authMode === "register") {
-      const name = $("reg-name").value.trim();
-      if (name.length < 2) throw new Error("Please enter your full name.");
-      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name } } });
+      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name: $("reg-name").value.trim() }, emailRedirectTo: location.origin + "/" } });
       if (error) throw error;
-      if (!data.session) { note(msg, "success", "Account created. Check your email to confirm it, then log in. (Admins can disable email confirmation in Supabase for the demo.)"); setAuthMode("login"); return; }
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error("already registered");
+      if (!data.session) { $("confirm-email").textContent = email; $("auth-form").hidden = true; $("confirm-panel").hidden = false; return; }
+      toast("Account created. Welcome to CampusFind!", "success");
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (error) { if (/invalid login/i.test(error.message)) failedLogins.push(Date.now()); throw error; }
     }
-    enterApp();
-  } catch (err) { note(msg, "error", esc(err.message)); }
-  finally { btn.disabled = false; }
+    // onAuthStateChange(SIGNED_IN) opens the app
+  } catch (err) { setMsg(msg, "error", esc(authMessage(err))); }
+  finally { busy(btn, false); }
 });
-
-$("logout").addEventListener("click", async () => { await sb.auth.signOut(); showLanding(); });
+$("back-login").onclick = () => setAuthMode("login");
+$("resend-btn").onclick = async () => {
+  const btn = $("resend-btn"), out = $("resend-msg"); busy(btn, true, "Sending…");
+  try { const { error } = await sb.auth.resend({ type: "signup", email: $("confirm-email").textContent, options: { emailRedirectTo: location.origin + "/" } });
+        if (error) throw error; setMsg(out, "success", "Confirmation email sent again."); }
+  catch (err) { setMsg(out, "error", esc(authMessage(err))); }
+  finally { busy(btn, false); }
+};
+$("logout").addEventListener("click", async () => { closePops(); try { await sb.auth.signOut(); } catch { /* ignore */ } showLanding(); toast("You have been logged out.", "info"); });
 
 async function enterApp() {
+  if (entering) return; entering = true;
   try { me = await api("/api/me"); }
-  catch (e) { showError(e.message); showLanding(); return; }
-  $("landing").hidden = true; $("app").hidden = false; $("logout").hidden = false;
-  $("who").textContent = me.name + " · " + me.role;
-  $("admin-tab").hidden = me.role !== "admin";
-  try { sessionId = localStorage.getItem("cf_session_" + me.id); } catch { sessionId = null; }
-  $("chatlog").innerHTML = "";
-  if (sessionId) {
-    try { const s = await api("/api/agent/sessions/" + sessionId); s.messages.forEach((m) => renderMessage(m.role, m.text, m)); }
-    catch { sessionId = null; }
+  catch (e) {
+    entering = false; me = null; showLanding();
+    setMsg($("auth-msg"), "error", e.status === 404 ? "Your account profile isn't ready yet. Please contact the admin office." : esc(e.message));
+    return;
   }
-  if (!sessionId) greet();
-  updateSessionLabel(); refreshCounts();
+  entering = false;
+  if (location.hash.includes("access_token")) history.replaceState(null, "", location.pathname);
+  $("landing").hidden = true; $("app").hidden = false; banner(null);
+  const first = (me.name || me.email).split(" ")[0];
+  $("user-name").textContent = me.name; $("user-role").textContent = me.role; $("avatar").textContent = (me.name || "?").trim()[0].toUpperCase();
+  $("pop-name").textContent = me.name; $("pop-email").textContent = me.email;
+  $("welcome-title").textContent = `${greeting()}, ${first} 👋`;
+  $("admin-nav").hidden = me.role !== "admin";
+  try { sessionId = localStorage.getItem("cf_session_" + me.id); } catch { sessionId = null; }
+  await restoreChat();
+  const target = pendingView || (location.hash.startsWith("#/") ? location.hash.slice(2) : "dashboard");
+  pendingView = null; go(target);
+  refreshCounts();
 }
+const greeting = () => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; };
 
-// ------------------------------------------------------------ tabs
-function openTab(name) {
-  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
-  ["chat", "lost", "found", "search", "matches", "reports", "admin"].forEach((t) => { $("tab-" + t).hidden = t !== name; });
-  if (name === "matches") loadMatches();
-  if (name === "reports") loadReports();
-  if (name === "admin") loadAdmin();
+/* =====================================================================
+   Navigation
+   ===================================================================== */
+const VIEWS = {
+  dashboard: ["Dashboard", "Your lost & found overview"], chat: ["AI Assistant", "Report and search by chatting"],
+  lost: ["Report a lost item", "We'll search found reports for you"], found: ["Report a found item", "Help the owner get it back"],
+  search: ["Search items", "Browse open lost and found reports"], matches: ["Potential matches", "Candidates for your lost items"],
+  reports: ["My reports", "Status of everything you reported"], admin: ["Admin dashboard", "Verify claims and hand items over"],
+};
+function go(view) {
+  if (!VIEWS[view] || (view === "admin" && me?.role !== "admin")) view = "dashboard";
+  currentView = view;
+  if (location.hash !== "#/" + view) history.replaceState(null, "", "#/" + view);
+  $$("[data-page]").forEach((s) => { s.hidden = s.dataset.page !== view; });
+  $$(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+  $("page-title").textContent = VIEWS[view][0]; $("page-sub").textContent = VIEWS[view][1];
+  document.title = VIEWS[view][0] + " · CampusFind AI";
+  closeMenu(); closePops(); window.scrollTo(0, 0);
+  ({ dashboard: loadDashboard, matches: loadMatches, reports: loadReports, admin: loadAdmin, chat: () => { scrollChat(); $("message").focus(); } }[view] || (() => {}))();
 }
-document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => openTab(b.dataset.tab)));
+$$(".nav-item").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
+document.addEventListener("click", (e) => { const t = e.target.closest("[data-go]"); if (t && me) { e.preventDefault(); go(t.dataset.go); } });
+window.addEventListener("hashchange", () => { if (me && location.hash.startsWith("#/")) { const v = location.hash.slice(2); if (v !== currentView) go(v); } });
+const closeMenu = () => { $("sidebar").classList.remove("open"); $("scrim").classList.remove("open"); };
+$("menu-btn").onclick = () => { $("sidebar").classList.add("open"); $("scrim").classList.add("open"); };
+$("scrim").onclick = closeMenu;
+function closePops() { $("notif-pop").hidden = true; $("user-pop").hidden = true; }
+$("bell").onclick = (e) => { e.stopPropagation(); const open = $("notif-pop").hidden; closePops(); $("notif-pop").hidden = !open; if (open) renderNotifPop(); };
+$("user-chip").onclick = (e) => { e.stopPropagation(); const open = $("user-pop").hidden; closePops(); $("user-pop").hidden = !open; };
+document.addEventListener("click", (e) => { if (!e.target.closest(".popover")) closePops(); });
 
 function fillSelects() {
-  document.querySelectorAll("[data-cats]").forEach((s) => meta.categories.forEach((c) => s.insertAdjacentHTML("beforeend", `<option value="${c}">${c.replace("_", " ")}</option>`)));
-  document.querySelectorAll("[data-locs]").forEach((s) => meta.locations.forEach((l) => s.insertAdjacentHTML("beforeend", `<option>${esc(l.name)}</option>`)));
+  $$("[data-cats]").forEach((s) => meta.categories.forEach((c) => s.insertAdjacentHTML("beforeend", `<option value="${esc(c)}">${esc(catLabel(c))}</option>`)));
+  $$("[data-locs]").forEach((s) => meta.locations.forEach((l) => s.insertAdjacentHTML("beforeend", `<option>${esc(l.name)}</option>`)));
 }
 
-// ------------------------------------------------------------ chat
-function greet() { renderMessage("assistant", "Hi " + me.name.split(" ")[0] + "! Tell me what you lost or found, and I'll take it from there. You can also search, or ask for 'my reports'.", {}); }
-function updateSessionLabel() { $("session-label").textContent = sessionId ? "Chat session " + sessionId.slice(0, 8) : "New chat session"; }
-$("new-chat").addEventListener("click", () => {
-  sessionId = null; try { localStorage.removeItem("cf_session_" + me.id); } catch {}
-  $("chatlog").innerHTML = ""; updateSessionLabel(); greet();
-});
-document.querySelectorAll("#suggest button").forEach((b) => b.addEventListener("click", () => { $("message").value = b.textContent; $("message").focus(); }));
+/* =====================================================================
+   Shared data
+   ===================================================================== */
+async function refreshCounts() {
+  if (!me) return;
+  try {
+    const [n, m] = await Promise.all([api("/api/notifications"), api("/api/matches/mine")]);
+    cache.notifications = n.notifications; cache.unread = n.unread; cache.matches = m.matches;
+    const open = m.matches.filter((x) => x.status === "candidate").length;
+    $("bell-count").hidden = !n.unread; $("bell-count").textContent = n.unread;
+    $("nav-match-count").hidden = !open; $("nav-match-count").textContent = open;
+    if (me.role === "admin") {
+      const s = await api("/api/admin/stats"); const p = s.matches.owner_confirmed || 0;
+      $("nav-admin-count").hidden = !p; $("nav-admin-count").textContent = p;
+    }
+  } catch { /* the page that needs the data shows the error */ }
+}
+setInterval(() => { if (me && document.visibilityState === "visible") refreshCounts(); }, 60000);
 
+async function markRead(id) { try { await api(`/api/notifications/${id}/read`, { method: "POST" }); await refreshCounts(); } catch (e) { toast(e.message, "error"); } }
+function notifItem(x, compact) {
+  const unread = x.status === "unread";
+  return `<div class="${compact ? "pi" : "list-item"} ${unread ? "unread" : ""}">
+    ${compact ? "" : `<span class="li-icon">${icon("bell", "sm")}</span>`}
+    <div style="flex:1;min-width:0"><div class="small">${esc(x.message)}</div>
+    <div class="tiny muted mt-sm">${esc(fmtWhen(x.created_at))}${unread ? ` · <a href="#" data-read="${esc(x.id)}">Mark as read</a>` : ""}</div></div></div>`;
+}
+function bindRead(root, after) { $$("[data-read]", root).forEach((a) => a.addEventListener("click", async (e) => { e.preventDefault(); e.stopPropagation(); await markRead(a.dataset.read); after(); })); }
+function renderNotifPop() {
+  const list = $("notif-pop-list"), items = cache.notifications.slice(0, 6);
+  list.innerHTML = items.length ? items.map((x) => notifItem(x, true)).join("") : `<div class="pi muted small">No notifications yet.</div>`;
+  bindRead(list, renderNotifPop);
+}
+
+/* =====================================================================
+   Dashboard
+   ===================================================================== */
+function statCard(ic, tone, value, label) { return `<div class="card stat"><span class="si ${tone}">${icon(ic)}</span><div><div class="v">${esc(value)}</div><div class="l">${esc(label)}</div></div></div>`; }
+async function loadDashboard() {
+  $("dash-stats").innerHTML = skeleton(4, 84).replaceAll("margin-bottom:12px", "");
+  $("dash-matches").innerHTML = `<div class="card-body">${skeleton(2, 70)}</div>`; $("dash-activity").innerHTML = `<div class="card-body">${skeleton(3, 40)}</div>`;
+  try {
+    const [r] = await Promise.all([api("/api/items/mine"), refreshCounts()]);
+    cache.reports = r.reports;
+    const reports = r.reports, matches = cache.matches;
+    const active = reports.filter((x) => ["open", "matched", "verified"].includes(x.status)).length;
+    const needs = matches.filter((m) => m.status === "candidate").length;
+    const returned = reports.filter((x) => x.status === "returned").length;
+    $("dash-stats").innerHTML = statCard("file", "blue", reports.length, "Reports submitted") + statCard("clock", "amber", active, "Active reports") +
+      statCard("spark", "violet", needs, "Matches awaiting your answer") + statCard("handshake", "green", returned, "Items returned");
+    const top = matches.slice(0, 3);
+    $("dash-matches").innerHTML = top.length ? top.map((m) => `<div class="list-item"><span class="cat-icon found">${icon("found")}</span>
+        <div style="flex:1;min-width:0"><div class="row between"><b class="strong">${esc(cap(what(m.found)))}</b>${statusBadge(m.status)}</div>
+        <div class="tiny muted">${esc(m.found.code)} · for your ${esc(m.lost_code)} · ${esc(m.found.location || "")}</div><div class="mt-sm">${scoreBar(m.total_score)}</div></div></div>`).join("")
+      : empty("spark", "No potential matches yet", "When someone reports an item similar to one you lost, it appears here and you get a notification.", `<button class="btn sm" data-go="lost">Report a lost item</button>`);
+    const acts = cache.notifications.slice(0, 5);
+    $("dash-activity").innerHTML = acts.length ? acts.map((x) => notifItem(x, false)).join("") : empty("bell", "Nothing yet", "Updates about your reports and matches will show up here.");
+    bindRead($("dash-activity"), loadDashboard);
+  } catch (e) { $("dash-stats").innerHTML = `<div class="span2" style="grid-column:1/-1">${alertBox("error", esc(e.message))}</div>`; $("dash-matches").innerHTML = ""; $("dash-activity").innerHTML = ""; }
+}
+
+/* =====================================================================
+   Chat
+   ===================================================================== */
+function engineChip(m) {
+  const src = m.reply_source || m.mode;
+  if (src === "llm") return `<span class="badge teal">${icon("spark", "sm")} Local LLM — Ollama</span>`;
+  if (src === "server_check") return `<span class="badge teal">${icon("spark", "sm")} Local LLM + server check</span>`;
+  if (src === "rules") return `<span class="badge amber">${icon("tool", "sm")} Rule-based engine</span>`;
+  if (m.mode === "unavailable") return `<span class="badge red">AI unavailable</span>`;
+  return "";
+}
+const scrollChat = () => { const l = $("chatlog"); l.scrollTop = l.scrollHeight; };
+function addUser(text) {
+  const row = document.createElement("div"); row.className = "msg-row user";
+  row.innerHTML = `<div class="bubble"></div>`; row.querySelector(".bubble").textContent = text;
+  $("chatlog").appendChild(row); scrollChat();
+}
+function addBot(text, extra = {}, isError = false) {
+  const row = document.createElement("div"); row.className = "msg-row bot";
+  const chips = [engineChip(extra), ...(extra.tool_calls || []).map((t) => `<span class="tool-chip ${t.ok ? "" : "err"}">${icon("tool", "sm")} ${esc(t.name)}: ${esc(t.summary)}</span>`)].filter(Boolean).join("");
+  row.innerHTML = `<span class="bot-avatar sm">${icon("bot", "sm")}</span><div class="bubble">${isError ? `<p class="warn-text">${esc(text)}</p>` : md(text)}${chips ? `<div class="msg-meta">${chips}</div>` : ""}</div>`;
+  $("chatlog").appendChild(row);
+  if ((extra.candidates || []).length) {
+    const box = document.createElement("div"); box.className = "msg-cands";
+    extra.candidates.forEach((c) => box.appendChild(candidateCard(c)));
+    $("chatlog").appendChild(box);
+  }
+  scrollChat();
+}
+function greet() { addBot(`Hi ${(me.name || "there").split(" ")[0]}! I'm the CampusFind assistant. Tell me what you **lost** or **found**, and I'll collect the details and look for potential matches. You can also ask me to search, or say "my reports".`, {}); }
+async function restoreChat() {
+  $("chatlog").innerHTML = "";
+  if (sessionId) {
+    try { const s = await api("/api/agent/sessions/" + sessionId); s.messages.forEach((m) => m.role === "user" ? addUser(m.text) : addBot(m.text, m)); }
+    catch { sessionId = null; $("chatlog").innerHTML = ""; }
+  }
+  if (!sessionId) greet();
+}
+$("new-chat").addEventListener("click", () => { sessionId = null; try { localStorage.removeItem("cf_session_" + me.id); } catch { /* ignore */ } $("chatlog").innerHTML = ""; greet(); loadHealth(); $("message").focus(); });
+$$("#suggest button").forEach((b) => b.addEventListener("click", () => { $("message").value = b.textContent; autosize(); $("message").focus(); }));
+function autosize() { const t = $("message"); t.style.height = "auto"; t.style.height = Math.min(160, t.scrollHeight) + "px"; $("char-count").textContent = `${t.value.length} / 2000`; }
+$("message").addEventListener("input", autosize);
+$("message").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("composer").requestSubmit(); } });
+let chatBusy = false;
+$("composer").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = $("message"), text = input.value.trim();
+  if (!text || chatBusy) return;
+  chatBusy = true; input.value = ""; autosize(); addUser(text);
+  const send = $("send"); send.disabled = true; input.disabled = true;
+  const row = document.createElement("div"); row.className = "msg-row bot";
+  row.innerHTML = `<span class="bot-avatar sm">${icon("bot", "sm")}</span><div class="bubble"><span class="typing"><i></i><i></i><i></i></span> <span class="small muted" data-t>Thinking…</span></div>`;
+  $("chatlog").appendChild(row); scrollChat();
+  const started = Date.now(), isLlm = health?.chat_engine === "llm";
+  const tick = setInterval(() => { const s = Math.round((Date.now() - started) / 1000); const t = row.querySelector("[data-t]");
+    if (t) t.textContent = s < 4 ? "Thinking…" : `Thinking… ${s}s` + (isLlm && s > 8 ? " (the local AI model can take up to a minute on this computer)" : ""); }, 1000);
+  try {
+    const r = await api("/api/agent/chat", { method: "POST", body: { session_id: sessionId, message: text }, timeout: 150000 });
+    sessionId = r.session_id; try { localStorage.setItem("cf_session_" + me.id, sessionId); } catch { /* ignore */ }
+    row.remove(); addBot(r.reply, r);
+    if ((r.items_created || []).length) toast(`Report ${r.items_created.join(", ")} saved.`, "success");
+    if (r.mode !== (health?.chat_engine)) loadHealth();
+    refreshCounts();
+  } catch (err) {
+    row.remove();
+    const msg = err.message === MSG.timeout ? "The AI took too long to answer. Your message may still be processed, so check My reports before sending it again." : err.message;
+    addBot(msg, {}, true);
+  } finally { clearInterval(tick); chatBusy = false; send.disabled = false; input.disabled = false; input.focus(); }
+});
+
+/* =====================================================================
+   Candidate + match cards
+   ===================================================================== */
 function candidateCard(c) {
-  const div = document.createElement("div"); div.className = "card";
-  const band = c.band === "strong_candidate" ? "Strong candidate" : "Possible candidate";
-  div.innerHTML = `<div class="row" style="justify-content:space-between">
-      <strong>${esc(c.item_code)} · ${esc(what(c))}</strong> <span class="badge">${esc(band)} · score ${Number(c.total_score).toFixed(2)}</span></div>
-    <div class="muted">${esc(c.location)} · ${esc(c.event_date)}${c.current_holding ? " · " + esc(c.current_holding) : ""}</div>
-    <div>Why it may match: ${esc(c.explanation)}</div>
-    <div class="muted">Potential match only. Please verify the details before we treat this as a match.</div>`;
-  if (c.report_type === "found" && c.match_id && c.match_status === "candidate") div.appendChild(ownerButtons(c.match_id));
-  else if (c.match_status && c.match_status !== "candidate") div.insertAdjacentHTML("beforeend", `<div class="muted">Match status: ${statusPill(c.match_status)}</div>`);
+  const div = document.createElement("div"); div.className = "card item-card";
+  const strong = c.band === "strong_candidate";
+  div.innerHTML = `<div class="top"><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><span class="cat-icon ${esc(c.report_type)}">${icon(c.report_type === "found" ? "found" : "lost")}</span>
+      <div><h4>${esc(cap(what(c)))}</h4><div class="tiny muted">${esc(c.item_code)} · ${esc(c.report_type)} report</div></div></div>
+      <span class="badge ${strong ? "teal" : "amber"}">${strong ? "Strong candidate" : "Possible candidate"}</span></div>
+    ${scoreBar(c.total_score)}
+    <div class="meta-row"><span>${icon("pin", "sm")} ${esc(c.location || "Unknown place")}</span><span>${icon("cal", "sm")} ${esc(fmtDate(c.event_date))}</span>${c.current_holding ? `<span>${icon("box", "sm")} ${esc(c.current_holding)}</span>` : ""}</div>
+    <div class="why"><b>Why it may match:</b> ${esc(c.explanation)}</div>
+    <div class="disclaimer">${icon("alert", "sm")} Potential match only. Please verify the details before we treat this as a match.</div>`;
+  if (c.report_type === "found" && c.match_id && c.match_status === "candidate") div.appendChild(ownerActions(c.match_id, () => refreshCounts()));
+  else if (c.match_status && c.match_status !== "candidate") div.insertAdjacentHTML("beforeend", `<div class="small muted">Match status: ${statusBadge(c.match_status)}</div>`);
   return div;
 }
-
-function ownerButtons(matchId) {
-  const box = document.createElement("div");
-  box.innerHTML = `<div class="row" style="margin-top:8px" data-a="btns">
-      <button class="btn" data-a="mine">Might be mine</button>
-      <button class="btn secondary" data-a="not">Not mine</button></div>
-    <div data-a="form" hidden style="margin-top:8px">
-      <label>Verification question: describe one detail only the real owner would know (what's inside, a mark, a sticker…)</label>
-      <textarea rows="2" maxlength="500"></textarea>
-      <div class="row" style="margin-top:6px"><button class="btn" data-a="submit">Send to admin</button></div>
-    </div>
-    <div data-a="result" hidden></div>`;
-  const q = (a) => box.querySelector(`[data-a="${a}"]`);
-  q("mine").onclick = () => { q("form").hidden = false; box.querySelector("textarea").focus(); };
-  q("not").onclick = async () => {
-    try { await api(`/api/matches/${matchId}/decline`, { method: "POST" }); q("btns").remove(); q("form").remove(); note(q("result"), "info", "Marked as not yours. Your report stays open."); refreshCounts(); }
-    catch (e) { note(q("result"), "error", esc(e.message)); }
-  };
-  q("submit").onclick = async () => {
-    const answer = box.querySelector("textarea").value.trim();
-    if (answer.length < 3) { note(q("result"), "error", "Please describe a detail (at least 3 characters)."); return; }
-    q("submit").disabled = true;
-    try {
-      const r = await api(`/api/matches/${matchId}/confirm`, { method: "POST", body: JSON.stringify({ answer }) });
-      q("btns").remove(); q("form").remove(); note(q("result"), "success", esc(r.message)); refreshCounts();
-    } catch (e) { q("submit").disabled = false; note(q("result"), "error", esc(e.message)); }
-  };
+function ownerActions(matchId, after) {
+  const box = document.createElement("div"); box.className = "row";
+  box.innerHTML = `<button class="btn sm">${icon("check", "sm")} Might be mine</button><button class="btn secondary sm">Not mine</button>`;
+  const [mine, not] = box.querySelectorAll("button");
+  mine.onclick = () => modal({
+    title: "Is this your item?", ic: "lock", confirm: "Send to admin",
+    body: `<p>Describe one detail that <b>only the real owner</b> would know: what's inside, a mark, a sticker, a scratch. An admin compares it with the finder's private note.</p>
+      <div class="field mt"><label for="owner-answer">Your answer</label><textarea id="owner-answer" maxlength="500" rows="3" placeholder="e.g. my college ID card is in the front pocket"></textarea></div>`,
+    onConfirm: async (m) => {
+      const answer = m.querySelector("#owner-answer").value.trim();
+      if (answer.length < 3) throw new Error("Please describe a detail (at least 3 characters).");
+      const r = await api(`/api/matches/${matchId}/confirm`, { method: "POST", body: { answer } });
+      toast(r.message || "Sent to the admin for verification.", "success");
+    },
+  }).then((ok) => { if (ok) { box.innerHTML = `<span class="badge violet">${icon("check", "sm")} Sent to admin for verification</span>`; after(); } });
+  not.onclick = () => modal({
+    title: "Not your item?", ic: "info", confirm: "Yes, not mine",
+    body: "<p>We'll hide this candidate. Your lost report stays open and you'll be notified about new potential matches.</p>",
+    onConfirm: async () => { await api(`/api/matches/${matchId}/decline`, { method: "POST" }); toast("Marked as not yours. Your report stays open.", "info"); },
+  }).then((ok) => { if (ok) { box.innerHTML = `<span class="badge">Marked as not yours</span>`; after(); } });
   return box;
 }
 
-function renderMessage(role, text, extra) {
-  const log = $("chatlog"); const div = document.createElement("div");
-  div.className = "msg " + role; div.textContent = text;
-  if (role === "assistant" && (extra.mode || (extra.tool_calls || []).length)) {
-    const chips = document.createElement("div"); chips.className = "chips";
-    if (extra.mode) chips.insertAdjacentHTML("beforeend", `<span class="badge ${extra.mode === "llm" ? "llm" : extra.mode === "rules" ? "rules" : "bad"}">${extra.mode === "llm" ? "answered by local LLM" : extra.mode === "rules" ? "answered by rule engine" : "unavailable"}</span>`);
-    (extra.tool_calls || []).forEach((t) => chips.insertAdjacentHTML("beforeend", `<span class="chip ${t.ok ? "" : "err"}" title="${esc(JSON.stringify(t.input))}">🔧 ${esc(t.name)}: ${esc(t.summary)}</span>`));
-    div.appendChild(chips);
-  }
-  log.appendChild(div);
-  (extra.candidates || []).forEach((c) => log.appendChild(candidateCard(c)));
-  log.scrollTop = log.scrollHeight;
+let matchFilter = "all";
+$$("#match-filters button").forEach((b) => b.addEventListener("click", () => { matchFilter = b.dataset.f; $$("#match-filters button").forEach((x) => x.classList.toggle("active", x === b)); renderMatches(); }));
+async function loadMatches() {
+  $("matches-list").innerHTML = skeleton(2, 220);
+  try { const r = await api("/api/matches/mine"); cache.matches = r.matches; renderMatches(); refreshCounts(); }
+  catch (e) { $("matches-list").innerHTML = `<div style="grid-column:1/-1">${alertBox("error", esc(e.message))}</div>`; }
+}
+function renderMatches() {
+  const list = $("matches-list");
+  const keep = { all: () => true, candidate: (m) => m.status === "candidate", progress: (m) => ["owner_confirmed", "verified"].includes(m.status), closed: (m) => m.status === "closed" }[matchFilter];
+  const ms = cache.matches.filter(keep);
+  if (!ms.length) { list.innerHTML = `<div class="card" style="grid-column:1/-1">${empty("spark", cache.matches.length ? "Nothing in this filter" : "No potential matches yet",
+      cache.matches.length ? "Try another filter." : "When a found report looks similar to something you lost, it appears here. You'll also get a notification.",
+      cache.matches.length ? "" : `<button class="btn sm" data-go="lost">Report a lost item</button>`)}</div>`; return; }
+  list.innerHTML = "";
+  ms.forEach((m) => {
+    const f = m.found; const card = document.createElement("div"); card.className = "card item-card";
+    card.innerHTML = `<div class="top"><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><span class="cat-icon found">${icon("found")}</span>
+        <div><h4>${esc(cap(what(f)))}</h4><div class="tiny muted">Found report ${esc(f.code)} · for your <span class="code-pill">${esc(m.lost_code)}</span></div></div></div>${statusBadge(m.status)}</div>
+      ${scoreBar(m.total_score)}
+      <div class="desc">${esc(f.description)}</div>
+      <div class="meta-row"><span>${icon("pin", "sm")} ${esc(f.location || "")}</span><span>${icon("cal", "sm")} ${esc(fmtDate(f.event_date))}</span>${f.current_holding ? `<span>${icon("box", "sm")} ${esc(f.current_holding)}</span>` : ""}</div>
+      <div class="why"><b>Why it may match:</b> ${esc(m.explanation)}</div>
+      ${m.status === "rejected" ? statusBadge("rejected") : timeline(MATCH_STEPS, matchIdx(m.status))}`;
+    if (m.status === "candidate") { card.insertAdjacentHTML("beforeend", `<div class="disclaimer">${icon("alert", "sm")} Potential match only. Please verify before we treat it as a match.</div>`); card.appendChild(ownerActions(m.match_id, loadMatches)); }
+    if (m.status === "verified") card.insertAdjacentHTML("beforeend", alertBox("success", "Verified! Collect your item from the <b>" + esc(f.current_holding || "admin office") + "</b>. Bring your college ID."));
+    list.appendChild(card);
+  });
 }
 
-$("composer").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const input = $("message"); const text = input.value.trim(); if (!text) return;
-  input.value = ""; renderMessage("user", text, {});
-  const send = $("send"); send.disabled = true;
-  const typing = document.createElement("div"); typing.className = "msg assistant muted"; typing.innerHTML = '<span class="spinner"></span> Agent is working…';
-  $("chatlog").appendChild(typing); $("chatlog").scrollTop = 1e9;
-  try {
-    const r = await api("/api/agent/chat", { method: "POST", body: JSON.stringify({ session_id: sessionId, message: text }) });
-    sessionId = r.session_id; try { localStorage.setItem("cf_session_" + me.id, sessionId); } catch {}
-    typing.remove(); updateSessionLabel(); renderMessage("assistant", r.reply, r); refreshCounts();
-  } catch (err) { typing.remove(); renderMessage("assistant", "⚠️ " + err.message, {}); }
-  finally { send.disabled = false; input.focus(); }
-});
-
-// ------------------------------------------------------------ report forms
+/* =====================================================================
+   Report forms (with a confirmation summary before saving)
+   ===================================================================== */
+const HOLDING = { finder: "With me (the finder)", admin_office: "Admin office", security: "Campus security" };
 function buildForm(type) {
   const found = type === "found";
-  $("tab-" + type).innerHTML = `
-    <form class="card" id="form-${type}" novalidate>
-      <h3 style="margin-top:0">${found ? "Report a found item" : "Report a lost item"}</h3>
-      <p class="muted">Prefer talking? The AI Agent tab collects the same details through conversation.</p>
-      <div class="grid2">
-        <div><label>Category</label><select name="category" required><option value="">Choose…</option>${meta.categories.map((c) => `<option value="${c}">${c.replace("_", " ")}</option>`).join("")}</select></div>
-        <div><label>Item name</label><input name="item_name" maxlength="80" required placeholder="e.g. laptop bag"></div>
-        <div><label>Colour <span class="opt">(optional)</span></label><input name="color" maxlength="40" placeholder="e.g. black"></div>
-        <div><label>Brand <span class="opt">(optional)</span></label><input name="brand" maxlength="40" placeholder="e.g. HP"></div>
-        <div><label>${found ? "Where did you find it?" : "Where did you lose it?"}</label><select name="location" required><option value="">Choose…</option>${meta.locations.map((l) => `<option>${esc(l.name)}</option>`).join("")}</select></div>
-        <div class="grid2"><div><label>Date</label><input name="event_date" type="date" required></div>
-          <div><label>Time <span class="opt">(approx.)</span></label><input name="event_time" type="time"></div></div>
+  const sec = document.querySelector(`[data-page="${type}"]`);
+  sec.innerHTML = `<div class="layout-form">
+    <form class="card form-card" id="form-${type}" novalidate>
+      <div class="row" style="margin-bottom:18px"><span class="cat-icon ${type}">${icon(found ? "found" : "lost")}</span>
+        <div><h3>${found ? "Report a found item" : "Report a lost item"}</h3><div class="small muted">Fields marked * are required. You'll review a summary before anything is saved.</div></div></div>
+      <div class="form-grid">
+        <div class="field" data-k="category"><label>Category *</label><select name="category"><option value="">Choose a category…</option>${meta.categories.map((c) => `<option value="${esc(c)}">${esc(catLabel(c))}</option>`).join("")}</select><span class="err">Please choose a category.</span></div>
+        <div class="field" data-k="item_name"><label>Item name *</label><input name="item_name" type="text" maxlength="80" placeholder="${found ? "e.g. water bottle" : "e.g. laptop bag"}"><span class="err">What is the item? (2–80 characters)</span></div>
+        <div class="field"><label>Colour <span class="opt">(optional)</span></label><input name="color" type="text" maxlength="40" placeholder="e.g. black"></div>
+        <div class="field"><label>Brand <span class="opt">(optional)</span></label><input name="brand" type="text" maxlength="40" placeholder="e.g. HP, Milton, TVS"></div>
+        <div class="field full" data-k="location"><label>${found ? "Where did you find it? *" : "Where did you lose it? *"}</label><select name="location"><option value="">Choose a campus location…</option>${meta.locations.map((l) => `<option>${esc(l.name)}</option>`).join("")}</select><span class="err">Please choose the place.</span></div>
+        <div class="field" data-k="event_date"><label>${found ? "Date found *" : "Date lost *"}</label><input name="event_date" type="date"><span class="err">Choose a date (not in the future).</span></div>
+        <div class="field"><label>Approximate time <span class="opt">(optional)</span></label><input name="event_time" type="time"></div>
+        <div class="field full" data-k="description"><label>Description *</label><textarea name="description" rows="3" maxlength="1000" placeholder="Distinguishing details: stickers, scratches, keychain, what's inside…"></textarea><span class="err">Please add a short description (at least 5 characters).</span><span class="hint">Don't include phone numbers or ID numbers. Long numbers are hidden automatically.</span></div>
+        ${found ? `<div class="field"><label>Where is the item now? *</label><select name="current_holding">${Object.entries(HOLDING).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select></div>
+        <div class="field"><label>${icon("lock", "sm")} Private detail <span class="opt">(admins only)</span></label><input name="verification_hint" type="text" maxlength="300" placeholder="Something only the owner would know"><span class="hint">Never shown to students. Used to check the owner's answer.</span></div>` : ""}
       </div>
-      <label>Description <span class="opt">(distinguishing details: stickers, scratches, keychain…)</span></label>
-      <textarea name="description" rows="3" maxlength="1000" required></textarea>
-      ${found ? `<div class="grid2">
-        <div><label>Where is the item now?</label><select name="current_holding"><option value="finder">With me</option><option value="admin_office">Admin office</option><option value="security">Campus security</option></select></div>
-        <div><label>🔒 Private detail only the owner would know <span class="opt">(admins only)</span></label><input name="verification_hint" maxlength="300" placeholder="e.g. a photo inside the front pocket"></div></div>` : ""}
-      <div data-msg hidden></div>
-      <p><button class="btn" type="submit">${found ? "Submit found report" : "Submit lost report"}</button></p>
+      <div data-msg class="mt" hidden></div>
+      <div class="row mt-lg"><button class="btn lg" type="submit">${icon("check")} Review & submit</button><button class="btn ghost" type="reset">Clear form</button></div>
     </form>
-    <div id="result-${type}"></div>`;
+    <div class="stack">
+      <div class="card side-tip"><h4>${found ? "Thank you for helping!" : "Tips for a faster match"}</h4><ul>
+        ${found ? "<li>Hand valuables to the <b>admin office</b> or security if you can.</li><li>Add a private detail (e.g. what's inside) so the admin can check the real owner.</li><li>Never hand an item directly to someone who only says it's theirs.</li>"
+                : "<li>Mention colour, brand and anything unique (stickers, keychain).</li><li>Pick the place where you last had it.</li><li>You'll be notified when a similar found item is reported.</li>"}
+      </ul></div>
+      <div class="card side-tip"><h4>Prefer to chat?</h4><p class="small muted">The AI assistant collects the same details through conversation.</p><button class="btn secondary sm mt-sm" data-go="chat" type="button">${icon("bot", "sm")} Open AI assistant</button></div>
+    </div></div>
+    <div id="result-${type}" class="mt"></div>`;
   const form = $("form-" + type);
   form.event_date.max = todayIso(); form.event_date.value = todayIso();
+  form.addEventListener("reset", () => setTimeout(() => { form.event_date.value = todayIso(); $$(".field", form).forEach((f) => f.classList.remove("invalid")); form.querySelector("[data-msg]").hidden = true; }, 0));
+  let saving = false;
   form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const msg = form.querySelector("[data-msg]"), btn = form.querySelector("button[type=submit]");
+    e.preventDefault(); if (saving) return;
+    const msg = form.querySelector("[data-msg]"); msg.hidden = true;
     const fd = Object.fromEntries(new FormData(form).entries());
-    for (const k of Object.keys(fd)) if (fd[k] === "") delete fd[k];
-    const missing = ["category", "item_name", "location", "event_date", "description"].filter((k) => !fd[k]);
-    if (missing.length) { note(msg, "error", "Please fill in: " + missing.join(", ").replaceAll("_", " ")); return; }
-    if (fd.event_date > todayIso()) { note(msg, "error", "The date can't be in the future."); return; }
-    btn.disabled = true; note(msg, "muted", '<span class="spinner"></span> Saving and running matching…');
+    for (const k of Object.keys(fd)) { fd[k] = String(fd[k]).trim(); if (fd[k] === "") delete fd[k]; }
+    const bad = {
+      category: !fd.category, item_name: !fd.item_name || fd.item_name.length < 2, location: !fd.location,
+      event_date: !fd.event_date || fd.event_date > todayIso(), description: !fd.description || fd.description.length < 5,
+    };
+    $$("[data-k]", form).forEach((f) => f.classList.toggle("invalid", !!bad[f.dataset.k]));
+    if (Object.values(bad).some(Boolean)) { setMsg(msg, "error", "Please fix the highlighted fields."); return; }
+    const rows = [["Type", found ? "Found item" : "Lost item"], ["Item", cap(what(fd))], ["Category", catLabel(fd.category)], ["Location", fd.location],
+      ["When", fmtDate(fd.event_date) + (fd.event_time ? " around " + fd.event_time : "")], ["Description", fd.description]];
+    if (found) { rows.push(["Item is now", HOLDING[fd.current_holding] || "-"]); rows.push(["Private detail", fd.verification_hint ? "Added (admins only)" : "None"]); }
+    const ok = await modal({ title: `Save this ${type} report?`, ic: "check", confirm: "Confirm & save",
+      body: `<p>Please check the details. Nothing is saved until you confirm.</p><dl class="summary-list">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>` });
+    if (!ok) return;
+    saving = true; const btn = form.querySelector("button[type=submit]"); busy(btn, true, "Saving & matching…");
     try {
-      const r = await api("/api/items/" + type, { method: "POST", body: JSON.stringify(fd) });
-      note(msg, "success", `Saved! Your report code is <b>${esc(r.code)}</b>.`);
-      form.reset(); form.event_date.value = todayIso();
-      const out = $("result-" + type); out.innerHTML = "";
-      const cands = r.matching?.candidates || [];
-      if (cands.length) { out.insertAdjacentHTML("beforeend", `<div class="info">I found a potentially matching report. Please verify the details before we treat this as a match.</div>`); cands.forEach((c) => out.appendChild(candidateCard(c))); }
-      else out.innerHTML = `<p class="muted">No potentially matching reports yet. ${found ? "If the owner reports it, the system will match it." : "You'll get a notification when something similar is reported."}</p>`;
-      refreshCounts();
+      const r = await api("/api/items/" + type, { method: "POST", body: fd, timeout: 45000 });
+      form.reset(); toast(`Saved! Your report code is ${r.code}.`, "success");
+      const out = $("result-" + type), cands = r.matching?.candidates || [];
+      out.innerHTML = alertBox("success", `Saved! Your report code is <span class="code-pill">${esc(r.code)}</span>. ` +
+        (cands.length ? "I found a potentially matching report. Please verify the details before we treat this as a match." :
+          found ? "No lost report matches this yet. If the owner reports it, the system will match it." : "No potential matches yet. You'll get a notification when something similar is reported."));
+      if (cands.length) { const g = document.createElement("div"); g.className = "grid g2 mt"; cands.forEach((c) => g.appendChild(candidateCard(c))); out.appendChild(g); }
+      out.scrollIntoView({ behavior: "smooth", block: "start" }); refreshCounts();
     } catch (err) {
-      if (err.status === 409 && err.body?.duplicate_of) note(msg, "info", `You already reported this as <b>${esc(err.body.duplicate_of)}</b>, so no duplicate was created.`);
-      else note(msg, "error", esc(err.message));
-    } finally { btn.disabled = false; }
+      if (err.status === 409 && err.body?.duplicate_of) setMsg(msg, "warn", `It looks like you already reported this as <span class="code-pill">${esc(err.body.duplicate_of)}</span>, so no duplicate was created.`);
+      else setMsg(msg, "error", "We couldn't save your report. " + esc(err.message));
+    } finally { saving = false; busy(btn, false); }
   });
 }
 
-// ------------------------------------------------------------ search
-function itemCard(r) {
-  return `<div class="card"><div class="row" style="justify-content:space-between"><strong>${esc(r.code)} · ${esc(what(r))}</strong>${statusPill(r.status)}</div>
-    <div>${esc(r.description)}</div>
-    <div class="muted">${esc(r.report_type)} · ${esc(r.category.replace("_", " "))} · ${esc(r.location)} · ${esc(r.event_date)}${r.current_holding ? " · " + esc(r.current_holding) : ""}</div></div>`;
+/* =====================================================================
+   Search
+   ===================================================================== */
+function itemCard(r, extra = "") {
+  return `<div class="card item-card"><div class="top"><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><span class="cat-icon ${esc(r.report_type)}">${icon(r.report_type === "found" ? "found" : "lost")}</span>
+      <div><h4>${esc(cap(what(r)))}</h4><div class="tiny muted"><span class="code-pill">${esc(r.code)}</span> · ${esc(cap(r.report_type))} · ${esc(catLabel(r.category))}</div></div></div>${statusBadge(r.status)}</div>
+    <div class="desc">${esc(r.description)}</div>
+    <div class="meta-row"><span>${icon("pin", "sm")} ${esc(r.location || "")}</span><span>${icon("cal", "sm")} ${esc(fmtDate(r.event_date))}${r.event_time ? " · " + esc(r.event_time) : ""}</span>${r.current_holding ? `<span>${icon("box", "sm")} ${esc(r.current_holding)}</span>` : ""}</div>${extra}</div>`;
 }
+let searching = false;
 $("search-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const out = $("search-results"); loading(out, "Searching…");
+  e.preventDefault(); if (searching) return;
+  const out = $("search-results"), btn = $("search-btn");
   const p = new URLSearchParams();
-  [["q", "s-q"], ["type", "s-type"], ["category", "s-cat"], ["location", "s-loc"]].forEach(([k, id]) => { if ($(id).value) p.set(k, $(id).value); });
+  [["q", "s-q"], ["type", "s-type"], ["category", "s-cat"], ["location", "s-loc"], ["from", "s-from"], ["to", "s-to"]].forEach(([k, id]) => { if ($(id).value) p.set(k, $(id).value.trim()); });
+  searching = true; busy(btn, true, "Searching…"); out.innerHTML = `<div class="grid g2">${skeleton(2, 160)}</div>`;
   try {
     const r = await api("/api/items/search?" + p.toString());
-    out.innerHTML = r.results.length ? `<p class="muted">${r.count} result(s). Search results are not matches; report your lost item to get scored candidates.</p>` + r.results.map(itemCard).join("")
-      : "<p class='muted'>No open reports match. Try fewer keywords.</p>";
-  } catch (err) { out.innerHTML = `<div class="error">${esc(err.message)}</div>`; }
+    out.innerHTML = r.results.length ? `<p class="small muted">${r.count} open report(s) found.</p><div class="grid g2 mt-sm">${r.results.map((x) => itemCard(x)).join("")}</div>`
+      : `<div class="card">${empty("search", "No matching open reports", "Try fewer keywords or a wider date range. If you lost something, report it and we'll notify you when a similar item is found.", `<button class="btn sm" data-go="lost" type="button">Report a lost item</button>`)}</div>`;
+  } catch (err) { out.innerHTML = alertBox("error", esc(err.message)); }
+  finally { searching = false; busy(btn, false); }
 });
 
-// ------------------------------------------------------------ matches + reports
-const STEPS = [["candidate", "Candidate"], ["owner_confirmed", "Owner answered"], ["verified", "Admin verified"], ["closed", "Returned"]];
-function timeline(status) {
-  if (status === "rejected") return `<div class="timeline"><span class="done">Rejected</span></div>`;
-  const idx = STEPS.findIndex(([s]) => s === status);
-  return `<div class="timeline">${STEPS.map(([, label], i) => `<span class="${i <= idx ? "done" : ""}">${i + 1}. ${label}</span>`).join("")}</div>`;
-}
-
-async function refreshCounts() {
-  try {
-    const n = await api("/api/notifications"); $("notif-count").textContent = n.unread ? `(${n.unread})` : "";
-    const m = await api("/api/matches/mine"); const open = m.matches.filter((x) => x.status === "candidate").length;
-    $("match-count").textContent = open ? `(${open})` : "";
-  } catch { /* shown elsewhere */ }
-}
-
-async function loadMatches() {
-  const list = $("matches-list"); loading(list);
-  try {
-    const { matches } = await api("/api/matches/mine");
-    list.innerHTML = matches.length ? "" : "<p class='muted'>No candidates for your lost reports yet. You'll be notified when something similar is reported.</p>";
-    matches.forEach((m) => {
-      const f = m.found; const card = document.createElement("div"); card.className = "card";
-      card.innerHTML = `<div class="row" style="justify-content:space-between"><strong>${esc(f.code)} for your ${esc(m.lost_code)}</strong> ${statusPill(m.status)}</div>
-        <div>${esc(what(f))}: ${esc(f.description)}</div>
-        <div class="muted">${esc(f.location)} · ${esc(f.event_date)}${f.current_holding ? " · " + esc(f.current_holding) : ""} · score ${m.total_score.toFixed(2)}</div>
-        <div class="muted">Why it may match: ${esc(m.explanation)}</div>${timeline(m.status)}`;
-      if (m.status === "candidate") card.appendChild(ownerButtons(m.match_id));
-      list.appendChild(card);
-    });
-  } catch (e) { list.innerHTML = `<div class="error">${esc(e.message)}</div>`; }
-}
-
+/* =====================================================================
+   My reports
+   ===================================================================== */
+let reportFilter = "all";
+$$("#report-filters button").forEach((b) => b.addEventListener("click", () => { reportFilter = b.dataset.f; $$("#report-filters button").forEach((x) => x.classList.toggle("active", x === b)); renderReports(); }));
 async function loadReports() {
-  loading($("notif-list"));
+  $("reports-list").innerHTML = skeleton(3, 150); $("notif-list").innerHTML = `<div class="card-body">${skeleton(3, 40)}</div>`;
   try {
-    const n = await api("/api/notifications");
-    $("notif-list").innerHTML = n.notifications.length ? "" : "<p class='muted'>No notifications.</p>";
-    n.notifications.forEach((x) => {
-      const d = document.createElement("div"); d.className = "card";
-      d.innerHTML = `<div>${x.status === "unread" ? "🔔 " : ""}${esc(x.message)}</div><div class="muted">${new Date(x.created_at).toLocaleString()} ${x.status === "unread" ? "· <a href='#'>mark read</a>" : ""}</div>`;
-      const a = d.querySelector("a");
-      if (a) a.onclick = async (ev) => { ev.preventDefault(); await api(`/api/notifications/${x.id}/read`, { method: "POST" }); loadReports(); refreshCounts(); };
-      $("notif-list").appendChild(d);
-    });
-    const { reports } = await api("/api/items/mine");
-    $("reports-table").innerHTML = "<tr><th>Code</th><th>Type</th><th>Item</th><th>Where / when</th><th>Status</th></tr>" +
-      (reports.length ? reports.map((r) => `<tr><td>${esc(r.code)}</td><td>${esc(r.report_type)}</td><td>${esc(what(r))}</td><td>${esc(r.location)} · ${esc(r.event_date)}</td><td>${statusPill(r.status)}</td></tr>`).join("")
-        : "<tr><td colspan='5' class='muted'>Nothing reported yet.</td></tr>");
-  } catch (e) { $("notif-list").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+    const [r, n] = await Promise.all([api("/api/items/mine"), api("/api/notifications")]);
+    cache.reports = r.reports; cache.notifications = n.notifications; cache.unread = n.unread;
+    renderReports(); renderNotifs(); refreshCounts();
+  } catch (e) { $("reports-list").innerHTML = alertBox("error", esc(e.message)); $("notif-list").innerHTML = ""; }
 }
-
-// ------------------------------------------------------------ admin
-function twoStep(btn, action) {
-  btn.addEventListener("click", async () => {
-    if (btn.dataset.armed !== "1") { btn.dataset.armed = "1"; btn.dataset.label = btn.textContent; btn.textContent = "Click again to confirm"; return; }
-    btn.disabled = true;
-    try { await action(); loadAdmin(); }
-    catch (e) { const d = document.createElement("div"); d.className = "error"; d.textContent = e.message; btn.closest(".card").appendChild(d);
-                btn.disabled = false; btn.textContent = btn.dataset.label; btn.dataset.armed = ""; }
+function renderReports() {
+  const list = $("reports-list"), rs = cache.reports.filter((r) => reportFilter === "all" || r.report_type === reportFilter);
+  if (!rs.length) { list.innerHTML = `<div class="card">${empty("file", "No reports yet", "Report a lost or found item and it will appear here with its status.", `<div class="row" style="justify-content:center"><button class="btn sm" data-go="lost">Report lost</button><button class="btn secondary sm" data-go="found">Report found</button></div>`)}</div>`; return; }
+  list.innerHTML = "";
+  rs.forEach((r) => {
+    const wrap = document.createElement("div");
+    const tl = ["cancelled"].includes(r.status) ? "" : `<div class="mt-sm">${timeline(ITEM_STEPS, itemIdx(r.status))}</div>`;
+    wrap.innerHTML = itemCard(r, `${tl}<div class="row mt-sm"><button class="btn secondary sm" data-check>${icon("spark", "sm")} Check matches</button></div><div data-out></div>`);
+    const card = wrap.firstElementChild, btn = card.querySelector("[data-check]");
+    if (["returned", "cancelled", "closed"].includes(r.status)) btn.remove();
+    else btn.onclick = async () => {
+      const out = card.querySelector("[data-out]"); busy(btn, true, "Checking…");
+      try {
+        const m = await api("/api/matches/search", { method: "POST", body: { item_code: r.code, limit: 5 } });
+        const c = m.candidates || [];
+        out.innerHTML = c.length ? alertBox("info", "I found a potentially matching report. Please verify the details before we treat this as a match.") : `<p class="small muted mt-sm">No potential matches right now. We'll notify you when something similar is reported.</p>`;
+        if (c.length) { const g = document.createElement("div"); g.className = "stack mt-sm"; c.forEach((x) => g.appendChild(candidateCard(x))); out.appendChild(g); }
+      } catch (e) { out.innerHTML = alertBox("error", esc(e.message)); }
+      finally { busy(btn, false); }
+    };
+    list.appendChild(card);
   });
 }
-function side(title, r, extra) {
-  return `<div><strong>${esc(title)} ${esc(r.code)}</strong><div>${esc(what(r))} (${esc(r.category)})</div><div>${esc(r.description)}</div>
-    <div class="muted">${esc(r.location)} · ${esc(r.event_date)}</div>${extra || ""}</div>`;
+function renderNotifs() {
+  $("unread-badge").hidden = !cache.unread; $("unread-badge").textContent = cache.unread + " unread";
+  $("notif-list").innerHTML = cache.notifications.length ? cache.notifications.map((x) => notifItem(x, false)).join("") : empty("bell", "No notifications", "We'll tell you about potential matches and verification updates here.");
+  bindRead($("notif-list"), () => { cache.notifications = cache.notifications.map((x) => x); loadReports(); });
 }
+
+/* =====================================================================
+   Admin dashboard
+   ===================================================================== */
+let queueStatus = "owner_confirmed", adminItems = [];
+$$("#queue-tabs button").forEach((b) => b.addEventListener("click", () => { queueStatus = b.dataset.s; $$("#queue-tabs button").forEach((x) => x.classList.toggle("active", x === b)); loadQueue(); }));
+$("admin-refresh").onclick = () => loadAdmin();
+$("admin-filter").addEventListener("input", renderAdminItems);
+$("admin-item-status").addEventListener("change", renderAdminItems);
 async function loadAdmin() {
+  $("admin-stats").innerHTML = skeleton(4, 84).replaceAll("margin-bottom:12px", "");
   try {
-    const s = await api("/api/admin/stats");
-    const st = (label, n) => `<div class="stat"><b>${n}</b><span class="muted">${label}</span></div>`;
-    $("admin-stats").innerHTML = st("Lost reports", s.total_lost) + st("Found reports", s.total_found) +
-      st("Waiting for verification", s.matches.owner_confirmed || 0) + st("Items returned", s.returned);
-  } catch (e) { $("admin-stats").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
-  const status = $("admin-status").value, list = $("admin-list"); loading(list);
+    const s = await api("/api/admin/stats"), m = s.matches || {};
+    $("admin-stats").innerHTML = statCard("lost", "amber", s.total_lost, "Lost reports") + statCard("found", "teal", s.total_found, "Found reports") +
+      statCard("users", "violet", m.owner_confirmed || 0, "Pending claims") + statCard("handshake", "green", s.returned, "Items returned");
+    $$("#queue-tabs button").forEach((b) => { const n = m[b.dataset.s] || 0; b.innerHTML = esc(b.textContent.replace(/\s*\(\d+\)$/, "")) + (n ? ` (${n})` : ""); });
+  } catch (e) { $("admin-stats").innerHTML = `<div style="grid-column:1/-1">${alertBox("error", esc(e.message))}</div>`; }
+  loadQueue(); loadAdminItems();
+}
+function side(title, r, extra) {
+  return `<div class="card pad" style="box-shadow:none"><div class="row between"><b>${esc(title)}</b><span class="code-pill">${esc(r.code)}</span></div>
+    <h4 class="mt-sm" style="text-transform:capitalize">${esc(what(r))}</h4><div class="small muted">${esc(catLabel(r.category))}</div>
+    <div class="desc small mt-sm">${esc(r.description)}</div>
+    <div class="meta-row mt-sm"><span>${icon("pin", "sm")} ${esc(r.location || "")}</span><span>${icon("cal", "sm")} ${esc(fmtDate(r.event_date))}</span></div>${extra}</div>`;
+}
+async function loadQueue() {
+  const list = $("admin-list"); list.innerHTML = skeleton(2, 200);
   try {
-    const { matches } = await api("/api/admin/matches?status=" + encodeURIComponent(status));
-    list.innerHTML = matches.length ? "" : "<p class='muted'>Nothing here.</p>";
+    const { matches } = await api("/api/admin/matches?status=" + encodeURIComponent(queueStatus));
+    if (!matches.length) { list.innerHTML = empty("shield", "Nothing here", { owner_confirmed: "No claims are waiting for verification.", verified: "No verified items are waiting to be handed over.", candidate: "No open candidates.", closed: "No returned items yet.", rejected: "No rejected matches." }[queueStatus]); return; }
+    list.innerHTML = "";
     matches.forEach((m) => {
-      const card = document.createElement("div"); card.className = "card";
-      card.innerHTML = `<div class="row" style="justify-content:space-between"><span>Score ${m.total_score.toFixed(2)} · ${esc(m.explanation)}</span> ${statusPill(m.status)}</div>
-        <div class="grid2" style="margin-top:8px">
-          ${side("Lost", m.lost, `<div class="private" style="margin-top:6px"><strong>Owner's answer:</strong> ${esc(m.owner_answer || "(not answered yet)")}</div>`)}
-          ${side("Found", m.found, `<div class="muted">Item is ${esc(m.found.current_holding || "with the finder")}</div>
-             <div class="private" style="margin-top:6px"><strong>🔒 Finder's private detail:</strong> ${esc(m.verification_hint || "(none)")}</div>`)}
-        </div>${timeline(m.status)}
-        ${m.reject_reason ? `<div class="muted">Reason: ${esc(m.reject_reason)}</div>` : ""}
-        <div class="row" style="margin-top:10px" data-actions></div>`;
-      const actions = card.querySelector("[data-actions]");
-      if (m.status === "owner_confirmed") { const v = document.createElement("button"); v.className = "btn"; v.textContent = "Verify ownership";
-        twoStep(v, () => api(`/api/admin/matches/${m.match_id}/verify`, { method: "POST", body: "{}" })); actions.appendChild(v); }
-      if (m.status === "verified") { const r = document.createElement("button"); r.className = "btn"; r.textContent = "Mark returned";
-        twoStep(r, () => api(`/api/admin/items/${m.found.code}/returned`, { method: "POST", body: "{}" })); actions.appendChild(r); }
-      if (["candidate", "owner_confirmed", "verified"].includes(m.status)) {
-        const reason = document.createElement("input"); reason.placeholder = "Reason (required to reject)"; reason.style.maxWidth = "260px";
-        const x = document.createElement("button"); x.className = "btn danger"; x.textContent = "Reject";
-        twoStep(x, () => api(`/api/admin/matches/${m.match_id}/reject`, { method: "POST", body: JSON.stringify({ reason: reason.value.trim() }) }));
-        actions.append(reason, x);
-      }
+      const card = document.createElement("div"); card.className = "card item-card";
+      card.innerHTML = `<div class="top"><div><div class="row">${statusBadge(m.status)}<span class="small muted">Match score</span></div><div class="mt-sm" style="min-width:min(220px,100%)">${scoreBar(m.total_score)}</div></div>
+          ${m.status === "rejected" ? "" : `<div style="flex:1;max-width:520px">${timeline(MATCH_STEPS, matchIdx(m.status))}</div>`}</div>
+        <div class="why"><b>Why it may match:</b> ${esc(m.explanation)}</div>
+        <div class="grid g2">
+          ${side("Lost report", m.lost, `<div class="answer mt-sm"><b>${icon("users", "sm")} Owner's answer:</b> ${esc(m.owner_answer || "Not answered yet")}</div>`)}
+          ${side("Found report", m.found, `<div class="small muted mt-sm">${icon("box", "sm")} Item is now: ${esc(m.found.current_holding || "with the finder")}</div>
+             <div class="private mt-sm"><b>${icon("lock", "sm")} Finder's private detail (admins only):</b> ${esc(m.verification_hint || "None given")}</div>`)}
+        </div>
+        ${m.reject_reason ? `<div class="small muted">Reason: ${esc(m.reject_reason)}</div>` : ""}
+        <div class="row" data-actions></div>`;
+      const act = card.querySelector("[data-actions]");
+      const addBtn = (label, cls, ic, fn) => { const b = document.createElement("button"); b.className = "btn sm " + cls; b.innerHTML = icon(ic, "sm") + " " + esc(label); b.onclick = fn; act.appendChild(b); };
+      if (m.status === "owner_confirmed") addBtn("Approve ownership", "", "check", () => modal({ title: "Approve this claim?", ic: "shield", confirm: "Approve ownership",
+        body: `<p>Compare the owner's answer with the finder's private detail. Approve only if they clearly agree.</p><div class="answer mt"><b>Owner:</b> ${esc(m.owner_answer || "-")}</div><div class="private mt-sm"><b>Finder:</b> ${esc(m.verification_hint || "None given")}</div>
+          <div class="field mt"><label for="v-note">Note <span class="opt">(optional)</span></label><input id="v-note" type="text" maxlength="300" placeholder="e.g. ID card in front pocket confirmed"></div>`,
+        onConfirm: async (md2) => { const note = md2.querySelector("#v-note").value.trim(); await api(`/api/admin/matches/${m.match_id}/verify`, { method: "POST", body: note ? { note } : {} }); toast("Ownership verified. You can now hand the item over.", "success"); } }).then((ok) => ok && loadAdmin()));
+      if (m.status === "verified") addBtn("Mark as returned", "", "handshake", () => modal({ title: "Mark item as returned?", ic: "handshake", confirm: "Mark returned",
+        body: `<p>Confirm that <b>${esc(what(m.found))}</b> (${esc(m.found.code)}) was handed to the owner. Both students are notified and the case is closed.</p>
+          <div class="field mt"><label for="r-note">Note <span class="opt">(optional)</span></label><input id="r-note" type="text" maxlength="300" placeholder="e.g. handed over at admin office"></div>`,
+        onConfirm: async (md2) => { const note = md2.querySelector("#r-note").value.trim(); await api(`/api/admin/items/${encodeURIComponent(m.found.code)}/returned`, { method: "POST", body: note ? { note } : {} }); toast("Marked as returned. Both students were notified.", "success"); } }).then((ok) => ok && loadAdmin()));
+      if (["candidate", "owner_confirmed", "verified"].includes(m.status)) addBtn("Reject", "danger", "x", () => modal({ title: "Reject this match?", ic: "alert", tone: "danger", confirm: "Reject match",
+        body: `<p>The reports go back to open, and the owner is notified. Please give a reason.</p><div class="field mt"><label for="rej">Reason *</label><textarea id="rej" maxlength="300" rows="2" placeholder="e.g. owner's answer doesn't match the private detail"></textarea></div>`,
+        onConfirm: async (md2) => { const reason = md2.querySelector("#rej").value.trim(); if (reason.length < 3) throw new Error("Please give a reason (at least 3 characters).");
+          await api(`/api/admin/matches/${m.match_id}/reject`, { method: "POST", body: { reason } }); toast("Match rejected.", "info"); } }).then((ok) => ok && loadAdmin()));
       list.appendChild(card);
     });
-    const { items } = await api("/api/admin/items");
-    $("admin-items").innerHTML = "<tr><th>Code</th><th>Type</th><th>Item</th><th>Where / when</th><th>Status</th></tr>" +
-      items.map((r) => `<tr><td>${esc(r.code)}</td><td>${esc(r.report_type)}</td><td>${esc(what(r))}</td><td>${esc(r.location)} · ${esc(r.event_date)}</td><td>${statusPill(r.status)}</td></tr>`).join("");
-  } catch (e) { list.innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+  } catch (e) { list.innerHTML = alertBox("error", esc(e.message)); }
 }
-$("admin-status").addEventListener("change", loadAdmin);
-$("admin-refresh").addEventListener("click", loadAdmin);
+async function loadAdminItems() {
+  $("admin-items").innerHTML = `<tr><td>${skeleton(3, 28)}</td></tr>`;
+  try { adminItems = (await api("/api/admin/items")).items; renderAdminItems(); }
+  catch (e) { $("admin-items").innerHTML = `<tr><td>${alertBox("error", esc(e.message))}</td></tr>`; }
+}
+function renderAdminItems() {
+  const q = $("admin-filter").value.trim().toLowerCase(), st = $("admin-item-status").value;
+  const rows = adminItems.filter((r) => (!st || r.status === st) && (!q || [r.code, r.item_name, r.color, r.brand, r.location, r.category].join(" ").toLowerCase().includes(q)));
+  $("admin-items").innerHTML = "<thead><tr><th>Code</th><th>Type</th><th>Item</th><th>Location</th><th>Date</th><th>Status</th></tr></thead><tbody>" +
+    (rows.length ? rows.map((r) => `<tr><td><span class="code-pill">${esc(r.code)}</span></td><td>${esc(cap(r.report_type))}</td><td style="text-transform:capitalize">${esc(what(r))}<div class="tiny muted">${esc(catLabel(r.category))}</div></td>
+      <td>${esc(r.location || "")}</td><td style="white-space:nowrap">${esc(fmtDate(r.event_date))}</td><td>${statusBadge(r.status)}</td></tr>`).join("")
+      : `<tr><td colspan="6">${empty("file", "No reports", adminItems.length ? "Nothing matches this filter." : "No reports have been submitted yet.")}</td></tr>`) + "</tbody>";
+}
 
-boot().catch((e) => showError("Startup failed: " + e.message));
+window.addEventListener("offline", () => toast(MSG.offline, "error"));
+window.addEventListener("online", () => toast("You're back online.", "success"));
+boot().catch(() => { showLanding(); banner("error", MSG.offline); });
 </script>
 </body>
 </html>

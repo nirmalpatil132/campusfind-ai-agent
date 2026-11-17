@@ -56,6 +56,13 @@ On macOS/Linux, use `python3 -m venv .venv`, then `source .venv/bin/activate` an
 6. Back in the SQL Editor, promote the admin:
    `update public.users set role = 'admin' where email = 'admin@yourcollege.test';`
 7. If logins fail with "Invalid token": **Project Settings → JWT Keys** must use the new signing keys (ES256/RS256), not the legacy HS256 secret.
+8. **Student self-registration (email confirmation ON):**
+   - **Authentication → Sign In / Providers → Email**: keep **Confirm email** on.
+   - **Authentication → URL Configuration**:
+     - **Site URL** = where the app runs (`http://localhost:8000` locally, or your Render URL).
+     - Under **Redirect URLs**, add `http://localhost:8000/**` and `https://<your-service>.onrender.com/**`. The confirmation link then opens the app, which logs the student in.
+   - New accounts always get the `student` role from the database trigger. Nothing in the API or the page can make someone an admin.
+   - Supabase's built-in email sender only allows a few emails per hour. If "Resend email" says too many attempts, wait, or set up custom SMTP (**Authentication → Emails → SMTP**).
 
 Without `DATABASE_URL`, the API still starts. `/api/health` shows `database: not_configured`, and every data route returns **503 with these setup steps**. Nothing is faked.
 
@@ -106,10 +113,13 @@ python scripts/reset_demo.py --yes     # wipe demo reports/matches/chats (keeps 
 ```
 
 Verified results (17 Nov 2026):
-- pytest: 128 passed, 1 skipped (plus the real-DB test: 1 passed)
-- matching recall@3: 10/10
-- end-to-end on Supabase: 44/44
-- real `qwen2.5:3b` tool call: correct tool chosen, 58 s on an i3
+- pytest: **149 passed, 1 skipped**, including 21 new tests: the iQube regression, rate limits, timeouts and error format.
+- matching recall@3: 10/10.
+- end-to-end on Supabase: 44/44, from before the UI redesign. Re-run it after a demo reset.
+- read-only checks on the live Supabase after the redesign: 15/15.
+- real `qwen2.5:3b` replay of the iQube chat:
+  - the invented details were dropped;
+  - a LOST report was saved only after "yes".
 
 See [docs/evaluation.md](docs/evaluation.md).
 
@@ -122,6 +132,46 @@ See [docs/evaluation.md](docs/evaluation.md).
 3. After the build, open `https://<your-service>.onrender.com/api/health`. It should show `database: ok`.
 4. In Supabase → **Authentication → URL Configuration**, add the Render URL as the Site URL.
 5. The free plan sleeps after 15 minutes idle; the first request then takes about 1 minute.
+
+## Protection: rate limits, timeouts, friendly errors
+
+| What | Limit (configurable in `.env`) | Key |
+|---|---|---|
+| AI chat `POST /api/agent/chat` | 10/minute and 200/day | per user (from the verified login token) |
+| Lost/found forms | 5/minute and 50/day | per user |
+| Search + matching | 30/minute | per user |
+| Admin verify / reject / return | 60/minute | per admin |
+| Every `/api/*` route except `/api/health` | 120/minute | per client IP (flood guard) |
+| Login / registration | Supabase Auth's own server-side limits, plus a page cooldown after 5 failed logins in a minute | Supabase |
+
+How the limits behave:
+- When a limit is exceeded, the server answers **HTTP 429** with a `Retry-After` header. The page then shows "Too many requests. Please try again shortly."
+- The counters are **in memory, per server process**. They are not shared across several workers or servers, and they reset when the server restarts. That is fine for our single Render instance; more servers would need Redis.
+
+Timeouts and stability:
+
+| What | Setting |
+|---|---|
+| Database connect | 10 s |
+| Waiting for a pooled DB connection | 15 s |
+| Any one SQL statement | 15 s (`statement_timeout`) |
+| Local LLM call | 120 s |
+| Requests to the LLM at the same time | 1. Others wait up to 45 s, then the rule engine answers, labelled as such |
+| Page waiting for an AI reply | 150 s. Other requests: 30–45 s |
+| Request body | Max 64 KB, otherwise HTTP 413 |
+
+Report saves are never retried automatically, so a retry can't create a duplicate report; the duplicate rule is a second safety net.
+
+Every error comes back as `{"detail": "<friendly message>", "code": "<error_code>"}`. Stack traces and SQL appear only in the server log.
+
+## How the AI agent avoids inventing details ("the LLM proposes, the server checks")
+
+During browser testing, qwen2.5:3b invented a location and a time. It also said "report created" when nothing was saved, and then saved a FOUND report for a LOST scooter key. The fix is in `app/agent/guard.py`:
+1. In LLM mode, a `create_*` tool call **never saves**. It only proposes a draft.
+2. The report type comes from the student's own words ("I lost" / "I found"), not from the model's choice.
+3. Every field must appear in what the student actually typed. Invented values are dropped, and the student is asked for them.
+4. The deterministic form step asks one question at a time, shows the summary, and saves only after "yes". Each reply is labelled with the engine that wrote it: "Local LLM — Ollama", "Local LLM + server check" or "Rule-based engine".
+5. If the model claims something was saved when the database saved nothing, that reply is replaced. Raw tool errors are never shown to students.
 
 ## What works
 
@@ -145,8 +195,8 @@ See [docs/evaluation.md](docs/evaluation.md).
 
 ## Deferred (not built yet)
 
-- Next.js frontend (Phase 6). A single-page HTML app is served from FastAPI instead, with these screens: landing, login/register, AI chat, lost/found forms, search, matches, my reports, admin dashboard.
-- Rate limiting (slowapi).
+- Next.js frontend (Phase 6). Instead, FastAPI serves a redesigned single-page HTML/CSS/JS app: landing page, login/registration, dashboard, AI assistant, lost/found forms, search, matches, my reports, admin dashboard. It works on desktop and phones.
+- Shared (multi-server) rate limiting. The current limits are in-memory, for one instance.
 - Tools `notify_user`, `escalate_to_admin`, `update_item_status` (cancelling your own report).
 - §17 prompt-injection test suite. Admin actions aren't tools and tool outputs exclude PII, but this isn't formally tested.
 - Seeding the 40 test reports into the DB, which is blocked because every report needs a real Auth user. The offline evaluation covers that dataset.

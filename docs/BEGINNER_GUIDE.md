@@ -84,6 +84,41 @@ user message → LLM decides → "call find_matching_items(L-0001)" → OUR code
 ```
 The loop stops after at most 6 steps, so it can never run forever.
 
+### "The LLM proposes, the server checks" (fix from real browser testing)
+In our first browser test, the small local model (qwen2.5:3b) made three mistakes with *"Hi, I have lost my scooty key. It's a IQube key"*:
+- It **invented** a place ("Main Canteen") and a time.
+- It said "I have created a report" although nothing was saved.
+- After "yes", it saved a **FOUND** report instead of a LOST one.
+
+Now (`agent/guard.py`):
+1. When the LLM calls `create_lost_report` or `create_found_report`, **nothing is saved**. The server only builds a *draft*.
+2. **Lost or found?** The server decides from the student's words ("I lost" / "I found"), not from the model's choice.
+3. **Every detail must come from the student.** If the place, date or time never appeared in what the student typed, the server throws it away and *asks* for it instead.
+4. A fixed, tested **form step** asks one question at a time, shows the summary, and saves only after **yes**.
+5. If the model claims "saved" but the database saved nothing, the server replaces that sentence. Students never see raw tool errors.
+
+The chat shows who wrote each reply:
+- **Local LLM — Ollama**
+- **Local LLM + server check**
+- **Rule-based engine**
+
+### Protecting the server (rate limits and timeouts)
+- **Rate limits** stop accidental flooding:
+  - chat: 10 messages per minute per student;
+  - reports: 5 per minute;
+  - search: 30 per minute;
+  - any address: 120 requests per minute.
+  
+  Above a limit, the server answers **429 Too Many Requests**, and the page says "Too many requests. Please try again shortly." The counters live in the server's memory, which is fine for one server but not shared between many.
+- **Timeouts** stop requests hanging forever:
+  - database connect: 10 s;
+  - any SQL query: 15 s;
+  - local AI: 120 s;
+  - one AI request at a time (others wait up to 45 s, then the rule engine helps);
+  - the page gives up after 150 s.
+- **Friendly errors.** Every error has the same shape, `{"detail": "...", "code": "..."}`. Students see plain messages; technical details go only to the server log.
+- **No double saves.** Form buttons are disabled while saving, saves are never retried automatically, and the duplicate rule catches repeats.
+
 ### Safety rules the server enforces, whatever the brain says
 1. A report is saved **only** if your last message was a plain "yes" (confirmation guard).
 2. Your user ID comes from your login token. If the model tries to pass a `user_id`, it is ignored.
@@ -157,6 +192,13 @@ You only do this once. **Never paste these values into a chat. Type them only in
     ```
     You should see "Success. 1 rows affected" for each line.
 11. Optional: **Project Settings → JWT Keys** should show the new signing keys (ECC/RSA). If it says "Legacy JWT secret" only, click **Migrate / Create signing keys**.
+12. **Let real students register (email confirmation ON):**
+    - **Authentication → Sign In / Providers → Email** → turn **Confirm email** back **on** → Save.
+    - **Authentication → URL Configuration**:
+      - **Site URL** = `http://localhost:8000` (change it to your Render URL after deploying).
+      - **Redirect URLs → Add URL**: `http://localhost:8000/**`, and later `https://<your-service>.onrender.com/**`.
+    - **Why:** the confirmation email link must open *our* app. Earlier it pointed to `localhost:3000`, where nothing runs, which is one reason registration seemed to fail.
+    - Supabase's free email sender sends only a few emails per hour. If a test says "Too many attempts", wait an hour or use a different test address.
 
 ### 1. Open the project in VS Code
 - **File → Open Folder…** → choose `Documents\Projects\Campus AI Agent` → **Select Folder**.
@@ -197,7 +239,7 @@ uvicorn app.main:app --reload
 - API explorer for examiners: **http://localhost:8000/docs**.
 
 ### 6. Log in
-Enter `student1@campusfind.test` and its password → **Log in**. You'll see the tabs: AI Agent, Report lost, Report found, Search, Matches, My reports. You can also try **Register** to create a new account. That works too if you turned off *Confirm email*.
+Enter `student1@campusfind.test` and its password → **Log in**. You land on the **Dashboard**. The left menu has AI Assistant, Report lost, Report found, Search items, Potential matches and My reports (on a phone, open it with the ☰ button). You can also try **Register** to create a new account. That works too if you turned off *Confirm email*.
 
 ### 7. Submit a lost report: two ways
 **A. With the AI agent** (AI Agent tab):
@@ -218,8 +260,8 @@ Enter `student1@campusfind.test` and its password → **Log in**. You'll see the
 ### 9. Log in as admin, verify, and return
 1. Log out → log in as `admin@campusfind.test`. An **Admin** tab appears (only admins see it).
 2. The cards at the top show counts. In the **Verification queue** ("Waiting for verification") you see the lost and found reports side by side, the owner's answer, and the 🔒 finder's private detail.
-3. Click **Verify ownership**, then click again to confirm.
-4. Switch the dropdown to **Verified: ready to hand over** → **Mark returned** → click again.
+3. Click **Approve ownership**, compare the two answers in the dialog, then click **Approve ownership** again.
+4. Click the **Verified: ready to hand over** tab → **Mark as returned** → confirm in the dialog.
 5. Both students now have notifications (My reports tab). The status timeline shows **4. Returned**.
 6. In Supabase **Table Editor → items**, both rows show `status = returned`; **matches** shows `closed`; **admin_actions** shows two rows.
 
@@ -242,7 +284,7 @@ python -m pytest -q
 python scripts\evaluate_matching.py
 ```
 **Success looks like:**
-- pytest: `128 passed, 1 skipped`
+- pytest: `149 passed, 1 skipped`
 - evaluation: `recall@3 on true pairs : 10/10`
 
 **Full real-database check.** It creates real rows, so run the reset afterwards:
@@ -279,9 +321,9 @@ The hosted app uses **rule mode**, because Render's free plan can't run Ollama. 
 | 2:45 | "Matching is plain maths, not the AI: 30% semantic, 20% category, 15% colour, 15% location, 10% time, 10% brand. Different brands cap it at 0.5, and a shared mark like 'red keychain' adds 0.05. It only says *potentially* matching." | Point at "Why it may match" | The explanation text |
 | 3:15 | "Riya checks it. She must answer a question only the owner can." | Student1 → Matches → **Might be mine** → `my ID card is in the front pocket` → Send | Success message; timeline at step 2 |
 | 3:45 | "Only a human admin can verify. These are buttons, not AI tools, so the AI can never close a case." | Admin → Admin tab | Owner's answer next to the 🔒 private detail |
-| 4:15 | | **Verify ownership** ×2 → dropdown "Verified" → **Mark returned** ×2 | Status *returned*; stats card |
+| 4:15 | | **Approve ownership** → confirm → tab "Verified" → **Mark as returned** → confirm | Status *returned*; stats card |
 | 4:40 | "Everything is logged: every tool call with the engine that chose it, and every admin click." | Supabase → Table editor → `agent_logs`, `admin_actions` | `tool_name` and `mode` columns |
-| 5:00 | "Tested: 128 automated tests, and recall 10/10 on our matching dataset." | Optional: `python -m pytest -q` | `128 passed` |
+| 5:00 | "Tested: 149 automated tests, including a replay of a real AI mistake we fixed, rate limits and timeouts, and recall 10/10 on our matching dataset." | Optional: `python -m pytest -q` | `149 passed` |
 
 **Backup plan:**
 - Record the demo once tonight on your phone.
@@ -290,7 +332,7 @@ The hosted app uses **rule mode**, because Render's free plan can't run Ollama. 
 
 ---
 
-## PART E: Viva preparation (28 questions)
+## PART E: Viva preparation (33 questions)
 
 1. **What is an AI agent?** A program where an AI model decides which actions (tools) to take, our code performs them, the model sees the results, and it repeats until the task is done. Agent = LLM + tools + loop + memory.
 2. **How is it different from a chatbot?** A chatbot only replies with text. Our agent *does* things: it saves reports, searches and runs matching, choosing the steps itself.
@@ -331,6 +373,11 @@ The hosted app uses **rule mode**, because Render's free plan can't run Ollama. 
 26. **How do you know it works with the real database, not just mocks?** `scripts/e2e_check.py` runs the full story on live Supabase with real accounts: lost → found → candidate (0.979) → owner confirms → admin verifies → returned. All 44 checks pass, including the negative ones: no token gives 401, a student on admin routes gets 403, the finder can't confirm, a vague report saves nothing, and a duplicate isn't saved.
 27. **Why does the hosted version use rules and not the LLM?** Free hosting has no GPU and too little RAM for a language model. The app detects this and labels the engine honestly. On the laptop, the same code uses Qwen through Ollama.
 28. **How fast is the local LLM?** Measured at 58 s for one reply (including model load) on an i3 with 8 GB RAM. It chose the right tool (`get_my_reports`) by itself. A GPU would make it a few seconds.
+29. **Your LLM once invented a location. How did you fix it?** The LLM only *proposes* a report. The server keeps only the details the student actually typed, decides lost vs found from the student's words, asks for anything missing, and saves only after "yes". A regression test replays the exact iQube scooter-key chat, and we also re-ran it on the real qwen2.5:3b.
+30. **What is rate limiting?** Counting each user's requests in a time window and refusing extra ones with HTTP 429 plus `Retry-After`. Ours: 10 chats per minute per user, 5 reports per minute, 30 searches per minute, 120 requests per minute per IP. It's in-memory, so it's per server process.
+31. **Why timeouts?** So a slow database or AI model can't freeze the app. DB queries stop after 15 s, the AI after 120 s, and only one AI request runs at a time. The others fall back to the rule engine, which is labelled honestly.
+32. **How do you avoid duplicate reports when a request is retried?** Saves are never retried automatically, the submit button is disabled while saving, and the server's duplicate rule (same user, type and category within 3 days, plus a similar place or description) blocks repeats with HTTP 409.
+33. **How does registration stay safe?** Supabase handles passwords and email confirmation; we never see passwords. A database trigger always creates new profiles as `student`. Roles change only through SQL by the college, never through the API or the AI.
 
 ---
 
@@ -385,15 +432,21 @@ Campus AI Agent/
 - Health endpoint
 
 **Tests executed (17 Nov 2026):**
-- `pytest`: 128 passed, 1 skipped (the real-DB test).
+- `pytest`: **149 passed, 1 skipped**. The skipped one is the real-DB test, which passes when run with `RUN_DB_TESTS=1`. The 149 include 21 new tests: the iQube regression, rate limits, 413/429, the error format, LLM timeout fallback and the LLM busy slot.
 - Matching evaluation: recall 10/10, traps 1/5, duplicates 5/5.
-- Server boot smoke test: `/api/health` and `/` returned 200, and `/api/me` returned 401 without a login.
-- Page JavaScript syntax check: OK.
+- End-to-end on Supabase (`e2e_check.py`): 44/44, run before the redesign.
+- Read-only live Supabase checks after the redesign: 15/15. These covered the connection, the 15 s statement timeout, the tables, JWKS, the signup trigger, roles, the student 403 on admin routes, no hint in search results, and 401 without a token.
+- Real qwen2.5:3b replay of the iQube chat:
+  - the model chose `create_lost_report`;
+  - the server dropped the invented location and time and asked for them;
+  - after "yes confirm", a LOST report was saved.
+  - The first reply took 108 s (model cold start).
+- The page's JavaScript passed a syntax check. Layouts were checked with screenshots at 1440 px and 390 px, using fake preview data.
 
-**Not yet verified (needs your Supabase project):**
-- Live database saves
-- Real logins
-- The full browser walkthrough (Part C steps 7–9)
+**Not yet verified after the redesign (needs your browser and passwords):**
+- Real logins in the new UI
+- Registering a new student with email confirmation
+- The full browser walkthrough (Part C steps 6–9)
 
 **Pending features:**
 - Next.js frontend

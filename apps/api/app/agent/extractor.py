@@ -49,6 +49,8 @@ ITEM_PHRASES: list[tuple[str, str, str]] = [
     ("i-card", "id_card", "ID card"), ("icard", "id_card", "ID card"),
     ("bus pass", "id_card", "bus pass"), ("library card", "id_card", "library card"),
     ("card holder", "wallet", "card holder"), ("wallet", "wallet", "wallet"), ("purse", "wallet", "purse"),
+    ("scooter key", "keys", "scooter key"), ("scooty key", "keys", "scooter key"),
+    ("bike key", "keys", "bike key"), ("car key", "keys", "car key"), ("vehicle key", "keys", "vehicle key"),
     ("key bunch", "keys", "key bunch"), ("bunch of keys", "keys", "key bunch"),
     ("keys", "keys", "keys"), ("key", "keys", "key"),
     ("textbook", "book", "textbook"), ("text book", "book", "textbook"),
@@ -90,6 +92,8 @@ BRANDS: list[str] = [
     "Cello", "Borosil", "Tupperware", "Wildcraft", "Skybags", "American Tourister", "Safari",
     "Puma", "Nike", "Adidas", "Reebok", "Titan", "Fastrack", "Fossil", "Sonata", "Parker",
     "Camlin", "Classmate", "Reynolds", "Lava", "Noise", "Fire-Boltt",
+    # vehicles (scooter / bike keys)
+    "TVS", "iQube", "Ather", "Honda", "Activa", "Bajaj", "Yamaha", "Suzuki", "Royal Enfield", "Hero",
 ]
 
 # "gave it to the admin office" describes WHERE THE ITEM IS NOW, not where it was found,

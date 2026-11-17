@@ -11,6 +11,7 @@ message that says exactly what to do.
 from __future__ import annotations
 
 import json
+import threading
 import time
 from typing import Any
 
@@ -86,10 +87,17 @@ class OllamaClient:
         """One non-streaming chat call. Returns Ollama's `message` dict
         ({'role': 'assistant', 'content': str, 'tool_calls': [...]})."""
         payload: dict[str, Any] = {"model": self.model, "messages": messages, "stream": False,
-                                   "options": {"temperature": 0.2}}
+                                   "keep_alive": settings.OLLAMA_KEEP_ALIVE,
+                                   "options": {"temperature": 0.1}}
         if tools:
             payload["tools"] = tools
-        resp = self._request("POST", "/api/chat", json=payload)
+        # Only OLLAMA_MAX_CONCURRENT model calls at once; others wait briefly, then fall back to rules.
+        if not _llm_slots().acquire(timeout=settings.OLLAMA_QUEUE_TIMEOUT):
+            raise OllamaUnavailable("The local AI model is busy with other students' requests.")
+        try:
+            resp = self._request("POST", "/api/chat", json=payload)
+        finally:
+            _llm_slots().release()
         if resp.status_code == 404:
             raise OllamaModelMissing(f"Model '{self.model}' is not installed. Run: ollama pull {self.model}")
         if resp.status_code >= 400:
@@ -118,6 +126,18 @@ class OllamaClient:
         if not vectors:
             raise OllamaError("Ollama returned no embedding.")
         return [float(x) for x in vectors[0]]
+
+
+_slots: threading.BoundedSemaphore | None = None
+_slots_lock = threading.Lock()
+
+
+def _llm_slots() -> threading.BoundedSemaphore:
+    global _slots
+    with _slots_lock:
+        if _slots is None:
+            _slots = threading.BoundedSemaphore(max(1, settings.OLLAMA_MAX_CONCURRENT))
+        return _slots
 
 
 def _error_text(resp: httpx.Response) -> str:

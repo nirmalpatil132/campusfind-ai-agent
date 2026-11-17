@@ -16,7 +16,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from psycopg_pool import ConnectionPool
+from psycopg_pool import ConnectionPool, PoolTimeout
 
 from app.config import settings
 
@@ -50,6 +50,13 @@ def is_configured() -> bool:
     return bool(settings.DATABASE_URL.strip())
 
 
+def _configure_connection(conn: psycopg.Connection) -> None:
+    # A stuck query is cancelled by Postgres instead of blocking a request forever.
+    # (Integer from our own settings, not user input; SET can't take a bound parameter.)
+    conn.execute(f"set statement_timeout = {int(settings.DB_STATEMENT_TIMEOUT_MS)}")
+    conn.commit()
+
+
 def get_pool() -> ConnectionPool:
     global _pool
     if not is_configured():
@@ -60,14 +67,16 @@ def get_pool() -> ConnectionPool:
             min_size=1,
             max_size=5,
             open=False,
+            timeout=settings.DB_POOL_TIMEOUT,  # waiting for a free connection never hangs forever
             kwargs={
                 "row_factory": dict_row,
                 "prepare_threshold": None,  # required for Supabase's pgbouncer pooler
-                "connect_timeout": 10,
+                "connect_timeout": settings.DB_CONNECT_TIMEOUT,
             },
+            configure=_configure_connection,
         )
         try:
-            pool.open(wait=True, timeout=15)
+            pool.open(wait=True, timeout=settings.DB_POOL_TIMEOUT)
         except Exception as exc:  # PoolTimeout / OperationalError
             pool.close()
             raise DatabaseUnavailable(f"Could not connect to the database: {exc}") from exc
@@ -89,8 +98,9 @@ def transaction() -> Iterator[psycopg.Connection]:
     try:
         with pool.connection() as conn:
             yield conn
-    except psycopg.OperationalError as exc:
-        raise DatabaseUnavailable(f"Database error: {exc}") from exc
+    except (psycopg.OperationalError, PoolTimeout) as exc:  # includes statement_timeout cancellations
+        log.warning("Database unavailable: %s", type(exc).__name__)
+        raise DatabaseUnavailable(f"Database error: {type(exc).__name__}") from exc
 
 
 def fetch_one(sql: str, params: dict[str, Any] | None = None,

@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
+from app.ratelimit import limit
 from app.auth import CurrentUser, get_current_user
 from app.schemas.api import ConfirmRequest, MatchSearchRequest
 from app.services import matches, matching
@@ -19,7 +20,7 @@ def mine(user: CurrentUser = Depends(get_current_user)) -> dict:
     return {"matches": matches.list_for_owner(user)}
 
 
-@router.post("/search")
+@router.post("/search", dependencies=[Depends(limit("search"))])
 def search(body: MatchSearchRequest, user: CurrentUser = Depends(get_current_user)) -> dict:
     return matching.find_matches(user, body.item_code, body.limit)
 

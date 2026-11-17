@@ -64,22 +64,22 @@ _REPORT_PROPS = {
 
 TOOLS: list[dict[str, Any]] = [
     _fn("create_lost_report",
-        "Save a LOST item report for the current user. Call ONLY after you know category, item_name, "
-        "location and date AND the user replied 'yes' to your summary. Returns code, or duplicate_of.",
+        "Start a report for an item the user LOST. Pass ONLY details the user said; leave unknown fields "
+        "out (never guess location, date or time). The server asks for missing details and confirmation.",
         {**_REPORT_PROPS,
          "lost_date": {"type": "string", "description": "YYYY-MM-DD"},
          "lost_time": {"type": "string", "description": "HH:MM 24-hour, approximate is fine"}},
-        ["category", "item_name", "description", "location", "lost_date"]),
+        ["item_name"]),
     _fn("create_found_report",
-        "Save a FOUND item report for the current user. Call ONLY after you know category, item_name, "
-        "location, date and where the item is now, AND the user replied 'yes' to your summary.",
+        "Start a report for an item the user FOUND. Pass ONLY details the user said; leave unknown fields "
+        "out (never guess location, date or time). The server asks for missing details and confirmation.",
         {**_REPORT_PROPS,
          "found_date": {"type": "string", "description": "YYYY-MM-DD"},
          "found_time": {"type": "string", "description": "HH:MM 24-hour"},
          "current_holding": {"type": "string", "enum": ["finder", "admin_office", "security"]},
          "verification_hint": {"type": "string",
                                "description": "PRIVATE detail only the owner would know (admins only)"}},
-        ["category", "item_name", "description", "location", "found_date"]),
+        ["item_name"]),
     _fn("search_items",
         "Search open lost/found reports, e.g. when the user asks 'has anyone found a blue bottle?'.",
         {"query": {"type": "string", "description": "Keywords, e.g. 'blue bottle'"},

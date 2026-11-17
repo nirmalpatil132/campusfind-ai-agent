@@ -113,7 +113,10 @@ def _next_missing(st: dict[str, Any]) -> str | None:
 
 def _summary(st: dict[str, Any]) -> str:
     f, rt = st["fields"], st["report_type"]
-    what = " ".join(x for x in (f.get("color"), f.get("brand"), f.get("item_name")) if x)
+    brand = f.get("brand")
+    if brand and brand.lower() in (f.get("item_name") or "").lower():
+        brand = None  # "iQube" + "IQube key" would read "iQube IQube key"
+    what = " ".join(x for x in (f.get("color"), brand, f.get("item_name")) if x)
     when = f["event_date"] + (f" around {f['event_time']}" if f.get("event_time") else "")
     lines = [f"Here's your {rt.upper()} report:",
              f"• Item: {what} ({f['category'].replace('_', ' ')})",

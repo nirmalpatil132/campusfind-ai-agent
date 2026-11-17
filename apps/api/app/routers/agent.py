@@ -9,13 +9,14 @@ from fastapi import APIRouter, Depends
 
 from app.agent import memory
 from app.agent.loop import run_turn
+from app.ratelimit import limit
 from app.auth import CurrentUser, get_current_user
 from app.schemas.api import ChatRequest
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
 
 
-@router.post("/chat")
+@router.post("/chat", dependencies=[Depends(limit("chat"))])
 def chat(body: ChatRequest, user: CurrentUser = Depends(get_current_user)) -> dict:
     """{session_id?, message} → {session_id, reply, mode, mode_reason, tool_calls[], items_created[], candidates[]}.
 

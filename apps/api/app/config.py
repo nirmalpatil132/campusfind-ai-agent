@@ -65,6 +65,26 @@ class Settings(BaseSettings):
     AGENT_MAX_STEPS: int = 6
     CHAT_HISTORY_LIMIT: int = 20
 
+    # --- Local LLM protection ---
+    OLLAMA_MAX_CONCURRENT: int = 1       # a laptop CPU can only run one model request well at a time
+    OLLAMA_QUEUE_TIMEOUT: float = 45.0   # wait this long for a free slot, then use the rule engine
+    OLLAMA_KEEP_ALIVE: str = "30m"       # keep the model loaded between messages (faster replies)
+
+    # --- Rate limits ("<count>/<second|minute|hour|day>", several separated by ";") ---
+    # In-memory, per server process: fine for one Render instance, NOT shared across workers/servers.
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_CHAT: str = "10/minute;200/day"       # per user
+    RATE_LIMIT_REPORTS: str = "5/minute;50/day"      # per user (lost/found forms)
+    RATE_LIMIT_SEARCH: str = "30/minute"             # per user (search + matching)
+    RATE_LIMIT_ADMIN: str = "60/minute"              # per admin (verify/reject/return)
+    RATE_LIMIT_GLOBAL_IP: str = "120/minute"         # per client IP, every /api route except health
+
+    # --- Request protection ---
+    MAX_REQUEST_BYTES: int = 64_000      # bigger bodies get HTTP 413
+    DB_CONNECT_TIMEOUT: int = 10         # seconds to open a database connection
+    DB_POOL_TIMEOUT: float = 15.0        # seconds to wait for a free pooled connection
+    DB_STATEMENT_TIMEOUT_MS: int = 15000 # any single SQL statement is cancelled after this
+
     @field_validator("*", mode="before")
     @classmethod
     def _comment_means_empty(cls, value: Any) -> Any:
