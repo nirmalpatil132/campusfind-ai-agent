@@ -10,6 +10,8 @@ services:
     name: campusfind-ai-agent
     runtime: python
     plan: free
+    # Deploy automatically every time a new commit is pushed to the linked branch (main).
+    autoDeployTrigger: commit
     rootDir: apps/api
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
